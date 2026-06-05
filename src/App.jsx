@@ -201,6 +201,10 @@ function OptimizedHotspots({ data, activeEditId, onRightClickSpot, tooltipRef, i
     ctx.fillStyle = '#ffffff';
     ctx.fill();
 
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = '#000000';
+    ctx.stroke();
+
     return new THREE.CanvasTexture(canvas);
   }, []);
 
@@ -314,7 +318,7 @@ function OptimizedHotspots({ data, activeEditId, onRightClickSpot, tooltipRef, i
           vertexColors
           map={dotTexture}
           transparent={true}
-          opacity={0.60} 
+          opacity={0.70} 
           alphaTest={0.01} 
           sizeAttenuation={false}  
           depthWrite={false}
@@ -393,7 +397,7 @@ export default function App() {
             if (key === 'z') z -= moveStep; 
             if (key === 'x') z += moveStep; 
 
-            y = Math.max(4.5, y); 
+            y = Math.max(5.5, y); 
 
             return { ...spot, pos: [parseFloat(x.toFixed(3)), parseFloat(y.toFixed(3)), parseFloat(z.toFixed(3))] };
           }
@@ -628,7 +632,7 @@ export default function App() {
           gl.toneMappingExposure = 2;
         }}
       >
-        <ambientLight intensity={0.9} /> 
+        <ambientLight intensity={0.7} /> 
         <directionalLight position={[800, 2000, 800]} intensity={1.0} color="#ffffff" />
         <directionalLight position={[-800, 1000, -800]} intensity={0.4} color="#ffffff" />
         

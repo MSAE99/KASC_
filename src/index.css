@@ -26,8 +26,8 @@ body {
 }
 
 .loading-logo {
-  max-width: 300px;
-  margin-bottom: 20px;
+  max-width: 600px;
+  margin-bottom: 10px;
 }
 
 .loading-spinner {
