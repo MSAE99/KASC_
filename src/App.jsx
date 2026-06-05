@@ -113,7 +113,7 @@ const initialHotspotsData = [
 ];
 
 function StadiumModel({ onLoadComplete, onMeshClick, onMeshDblClick }) {
-  const { scene } = useGLTF("/045_King_Abdullah_Stadium-v1.glb");
+  const { scene } = useGLTF("/045_King_Abdullah_Stadium-v2.glb");
   
   useEffect(() => {
     if (scene) {
