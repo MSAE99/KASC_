@@ -116,6 +116,7 @@ function StadiumModel({ onLoadComplete, onMeshClick, onMeshDblClick }) {
   const { scene } = useGLTF("/045_King_Abdullah_Stadium-v2.glb");
   
   useEffect(() => {
+    
     if (scene) {
       scene.traverse((child) => {
         if (child.isMesh && child.material) {
@@ -123,7 +124,7 @@ function StadiumModel({ onLoadComplete, onMeshClick, onMeshDblClick }) {
             child.material.map.generateMipmaps = true;
             child.material.map.minFilter = THREE.LinearMipmapLinearFilter;
             child.material.map.magFilter = THREE.LinearFilter;
-            child.material.map.anisotropy = 8; 
+            child.material.map.anisotropy = 4; 
             child.material.map.needsUpdate = true;
           }
           child.material.depthWrite = true;
@@ -155,189 +156,86 @@ function StadiumModel({ onLoadComplete, onMeshClick, onMeshDblClick }) {
 }
 
 function OptimizedHotspots({ data, activeEditId, onRightClickSpot, tooltipRef, isOrbitingRef, isDragging }) {
-  const meshRef = useRef();
   const hoverMeshRef = useRef(); 
-  const hoveredIndexRef = useRef(null); 
   const { camera } = useThree();
 
   const [positions, colors] = useMemo(() => {
     const posArray = new Float32Array(data.length * 3);
     const colorArray = new Float32Array(data.length * 3);
-
     data.forEach((spot, i) => {
-      if (spot.id === activeEditId) {
-        posArray[i * 3] = 0;
-        posArray[i * 3 + 1] = -99999;
-        posArray[i * 3 + 2] = 0;
-        return;
-      }
-
       posArray[i * 3] = spot.pos[0];
       posArray[i * 3 + 1] = spot.pos[1];
       posArray[i * 3 + 2] = spot.pos[2];
-
-      if (spot.type === 'parking') {
-        colorArray[i * 3] = 1.0;    
-        colorArray[i * 3 + 1] = 1.0; 
-        colorArray[i * 3 + 2] = 1.0; 
-      } else {
-        colorArray[i * 3] = 0.001;    
-        colorArray[i * 3 + 1] = 0.06; 
-        colorArray[i * 3 + 2] = 0.4; 
-      }
+      colorArray[i * 3] = spot.type === 'parking' ? 1.0 : 1;
+      colorArray[i * 3 + 1] = spot.type === 'parking' ? 1.0 : 1;
+      colorArray[i * 3 + 2] = spot.type === 'parking' ? 1.0 : 1;
     });
-
     return [posArray, colorArray];
-  }, [data, activeEditId]);
+  }, [data]);
 
   const dotTexture = useMemo(() => {
     const canvas = document.createElement('canvas');
-    canvas.width = 64;
-    canvas.height = 64;
+    canvas.width = 64; canvas.height = 64;
     const ctx = canvas.getContext('2d');
-    
-    ctx.beginPath();
-    ctx.arc(32, 32, 22, 0, 2 * Math.PI);
-    ctx.fillStyle = '#ffffff';
-    ctx.fill();
-
-    ctx.lineWidth = 5;
-    ctx.strokeStyle = '#000000';
-    ctx.stroke();
-
+    ctx.beginPath(); ctx.arc(32, 32, 22, 0, 2 * Math.PI); ctx.fillStyle = '#ffffff'; ctx.fill();
     return new THREE.CanvasTexture(canvas);
   }, []);
 
+  // تحديث التول تيب فقط إذا لم نكن نحرك الكاميرا
   useFrame(() => {
-    if (!tooltipRef.current) return;
+    if (!tooltipRef.current || !hoverMeshRef.current || !hoverMeshRef.current.visible || isOrbitingRef.current || isDragging) return;
     
-    // ✨ إيقاف الحسابات والإخفاء الفوري عند تحريك الكاميرا أو الزوم لمنع التقطيع
-    if (isOrbitingRef.current || isDragging) {
-      if (hoverMeshRef.current) hoverMeshRef.current.visible = false;
-      if (tooltipRef.current.style.visibility !== 'hidden') {
-         tooltipRef.current.style.opacity = '0';
-         tooltipRef.current.style.visibility = 'hidden';
-      }
-      return;
-    }
-
-    const index = hoveredIndexRef.current;
-    
-    if (index !== null && index !== undefined) {
-      const spot = data[index];
-      
-      if (!spot || spot.id === activeEditId) {
-        if (hoverMeshRef.current) hoverMeshRef.current.visible = false;
-        if (tooltipRef.current.style.visibility !== 'hidden') {
-           tooltipRef.current.style.opacity = '0';
-           tooltipRef.current.style.visibility = 'hidden';
-        }
-        return;
-      }
-
-      // حسابات سريعة جداً 
-      _spotPos.set(spot.pos[0], spot.pos[1], spot.pos[2]);
-
-      if (hoverMeshRef.current) {
-        hoverMeshRef.current.position.copy(_spotPos);
-        hoverMeshRef.current.material.color.setHex(spot.type === 'parking' ? 0xffffff : 0x0077ff);
-        hoverMeshRef.current.visible = true;
-      }
-
-      camera.getWorldDirection(_camDir);
-      _dirToSpot.copy(_spotPos).sub(camera.position).normalize();
-      const dotProduct = _dirToSpot.dot(_camDir);
-
-      if (dotProduct > 0.25) {
-        _vector.copy(_spotPos).project(camera);
-        const x = (_vector.x * 0.5 + 0.5) * window.innerWidth;
-        const y = (-(_vector.y * 0.5) + 0.5) * window.innerHeight;
-        
-        tooltipRef.current.style.left = `${x}px`;
-        tooltipRef.current.style.top = `${y - 20}px`;
-        
-        if (tooltipRef.current.innerText !== spot.label) {
-           tooltipRef.current.innerText = spot.label;
-        }
-
-        if (tooltipRef.current.style.visibility !== 'visible') {
-           tooltipRef.current.style.opacity = '1';
-           tooltipRef.current.style.visibility = 'visible';
-        }
-      } else {
-        if (tooltipRef.current.style.visibility !== 'hidden') {
-           tooltipRef.current.style.opacity = '0';
-           tooltipRef.current.style.visibility = 'hidden';
-        }
-      }
-    } else {
-      if (hoverMeshRef.current) hoverMeshRef.current.visible = false;
-      if (tooltipRef.current.style.visibility !== 'hidden') {
-         tooltipRef.current.style.opacity = '0';
-         tooltipRef.current.style.visibility = 'hidden';
-      }
-    }
+    _vector.copy(hoverMeshRef.current.position).project(camera);
+    tooltipRef.current.style.left = `${(_vector.x * 0.5 + 0.5) * window.innerWidth}px`;
+    tooltipRef.current.style.top = `${(-_vector.y * 0.5 + 0.5) * window.innerHeight - 30}px`;
   });
-
-  const handlePointerDown = (e) => {
-    e.stopPropagation();
-    if (e.nativeEvent.button === 2 && e.index !== undefined) {
-      const spot = data[e.index];
-      if (spot) {
-        onRightClickSpot(spot);
-      }
-    }
-  };
-
-  // استخدام Enter و Leave بدلاً من Move يخفف الحمل بنسبة كبيرة
-  const handlePointerEnter = (e) => {
-    e.stopPropagation();
-    if (e.index !== undefined) {
-      hoveredIndexRef.current = e.index;
-    }
-  };
-
-  const handlePointerLeave = () => {
-    hoveredIndexRef.current = null;
-  };
 
   return (
     <group>
-      <points 
-        ref={meshRef} 
-        onPointerDown={handlePointerDown}
-        onPointerEnter={handlePointerEnter}
-        onPointerLeave={handlePointerLeave}
-      >
+      {/* 1. النقاط الأصلية */}
+      <points>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[positions, 3]} />
           <bufferAttribute attach="attributes-color" args={[colors, 3]} />
         </bufferGeometry>
-        <pointsMaterial 
-          size={15}                
-          vertexColors
-          map={dotTexture}
-          transparent={true}
-          opacity={0.70} 
-          alphaTest={0.01} 
-          sizeAttenuation={false}  
-          depthWrite={false}
-        />
+        <pointsMaterial size={15} vertexColors map={dotTexture} transparent opacity={0.7} sizeAttenuation={false} depthWrite={false} />
       </points>
 
+      {/* 2. نقاط الاصطدام (خفية) - هنا الحل لسرعة التوهج */}
+      <group>
+        {data.map((spot, index) => (
+          <mesh 
+            key={spot.id}
+            position={spot.pos}
+            onPointerEnter={(e) => {
+              e.stopPropagation();
+              if (activeEditId === spot.id) return;
+              // ✨ تحديث فوري لمكان التوهج (بدون انتظار الفريم)
+              hoverMeshRef.current.position.set(spot.pos[0], spot.pos[1], spot.pos[2]);
+              hoverMeshRef.current.material.color.setHex(spot.type === 'parking' ? 0xffffff : 0xffffff);
+              hoverMeshRef.current.visible = true;
+              
+              tooltipRef.current.innerText = spot.label;
+              tooltipRef.current.style.opacity = '1';
+              tooltipRef.current.style.visibility = 'visible';
+            }}
+            onPointerLeave={() => {
+              hoverMeshRef.current.visible = false;
+              tooltipRef.current.style.opacity = '0';
+              tooltipRef.current.style.visibility = 'hidden';
+            }}
+            onPointerDown={(e) => { e.stopPropagation(); onRightClickSpot(spot); }}
+          >
+            <sphereGeometry args={[5, 8, 8]} />
+            <meshBasicMaterial visible={false} />
+          </mesh>
+        ))}
+      </group>
+
+      {/* 3. نقطة التوهج */}
       <points ref={hoverMeshRef} visible={false}>
-        <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[new Float32Array([0, 0, 0]), 3]} />
-        </bufferGeometry>
-        <pointsMaterial 
-          size={25} 
-          map={dotTexture}
-          transparent={true}
-          opacity={1.0} 
-          alphaTest={0.01} 
-          sizeAttenuation={false}  
-          depthWrite={false}
-        />
+        <bufferGeometry><bufferAttribute attach="attributes-position" args={[new Float32Array([0,0,0]), 3]} /></bufferGeometry>
+        <pointsMaterial size={30} map={dotTexture} transparent opacity={1} sizeAttenuation={false} depthWrite={false} />
       </points>
     </group>
   );
@@ -675,7 +573,7 @@ export default function App() {
                     <bufferAttribute attach="attributes-position" args={[new Float32Array([0, 0, 0]), 3]} />
                   </bufferGeometry>
                   <pointsMaterial 
-                    size={15} 
+                    size={20} 
                     color="#791111" 
                     map={editDotTexture}
                     transparent={true}
