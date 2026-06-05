@@ -97,7 +97,7 @@ const initialHotspotsData = [
   { id: 89, label: "POS 9\n27.36 m2\n1 Shutter", pos: [60.13, 11.81, -62.03], type: "gate" },
   { id: 90, label: "POS 10\n48.63 m2\n2 Shutter", pos: [80.88, 11.87, -41.92], type: "gate" },
   { id: 91, label: "POS 11\n51.82 m2\n2 Shutter", pos: [85.07, 12.13, 6.7], type: "gate" },
-  { id: 92, label: "POS 12\n48.41 mss2\n2 Shutter", pos: [70.17, 11.37, 56.97], type: "gate" },
+  { id: 92, label: "POS 12\n48.41 m2\n2 Shutter", pos: [70.17, 11.37, 56.97], type: "gate" },
   { id: 93, label: "POS 13\n32.31 m2\n1 Shutter", pos: [40.51, 12.08, 66.07], type: "gate" },
   { id: 94, label: "POS 1\n41.40 m2\n3 Shutter", pos: [0.95, 29.74, 118.07], type: "gate" },
   { id: 95, label: "POS 2\n41.40 m2\n3 Shutter", pos: [-113.71, 29.73, 29.18], type: "gate" },
