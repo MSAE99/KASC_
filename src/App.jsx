@@ -30,7 +30,7 @@ const initialHotspotsData = [
   { id: 17, label: "A2 Parking: 138", pos: [38.44, 4.5, -176.67], type: "parking" },
   { id: 18, label: "A2 Parking: 158", pos: [152.83, 4.5, -95.32], type: "parking" },
   { id: 19, label: "A2 Parking: 72", pos: [-150.94, 4.5, 96.63], type: "parking" },
-  { id: 20, block: 1, label: "B1 Parking: 231", pos: [235.86, 4.5, 153.04], type: "parking" },
+  { id: 20, label: "B1 Parking: 231", pos: [235.86, 4.5, 153.04], type: "parking" },
   { id: 21, label: "B1 Parking: 247", pos: [275.66, 4.5, -53.69], type: "parking" },
   { id: 22, label: "B1 Parking: 272", pos: [161.66, 4.5, -230.00], type: "parking" },
   { id: 23, label: "B1 Parking: 253", pos: [-53.80, 4.5, -278.26], type: "parking" },
@@ -116,7 +116,6 @@ function StadiumModel({ onLoadComplete, onMeshClick, onMeshDblClick }) {
   const { scene } = useGLTF("/045_King_Abdullah_Stadium-v2.glb");
   
   useEffect(() => {
-    
     if (scene) {
       scene.traverse((child) => {
         if (child.isMesh && child.material) {
@@ -136,20 +135,24 @@ function StadiumModel({ onLoadComplete, onMeshClick, onMeshDblClick }) {
   }, [scene, onLoadComplete]);
 
   return (
-    // ✨ تغليف الاستاد بـ Bvh يقلل المعالجة بنسبة 99% عند النقر وتحريك الماوس
     <Bvh firstHitOnly>
       <primitive 
         object={scene} 
         onClick={(e) => {
           e.stopPropagation();
-          if (e.point) onMeshClick(e.point);
+          // السماح بالكليك اليسار فقط (button 0) للنقرات على الملعب
+          if (e.nativeEvent.button === 0 && e.point) {
+            onMeshClick(e.point);
+          }
         }}
         onDoubleClick={(e) => {
           e.stopPropagation();
-          if (e.point) onMeshDblClick(e.point);
+          if (e.nativeEvent.button === 0 && e.point) {
+            onMeshDblClick(e.point);
+          }
         }}
-        // منع الأشعة من اختراق الأسطح وإضاءة النقاط المخفية
-        onPointerOver={(e) => e.stopPropagation()} 
+        onPointerEnter={(e) => e.stopPropagation()} 
+        onPointerDown={(e) => e.stopPropagation()}
       />
     </Bvh>
   );
@@ -157,7 +160,8 @@ function StadiumModel({ onLoadComplete, onMeshClick, onMeshDblClick }) {
 
 function OptimizedHotspots({ data, activeEditId, onRightClickSpot, tooltipRef, isOrbitingRef, isDragging }) {
   const hoverMeshRef = useRef(); 
-  const { camera } = useThree();
+  // ✨ تحسين رقم 1: جلب size لمنع حساب الأبعاد باستمرار
+  const { camera, size } = useThree(); 
 
   const [positions, colors] = useMemo(() => {
     const posArray = new Float32Array(data.length * 3);
@@ -166,9 +170,9 @@ function OptimizedHotspots({ data, activeEditId, onRightClickSpot, tooltipRef, i
       posArray[i * 3] = spot.pos[0];
       posArray[i * 3 + 1] = spot.pos[1];
       posArray[i * 3 + 2] = spot.pos[2];
-      colorArray[i * 3] = spot.type === 'parking' ? 1.0 : 1;
-      colorArray[i * 3 + 1] = spot.type === 'parking' ? 1.0 : 1;
-      colorArray[i * 3 + 2] = spot.type === 'parking' ? 1.0 : 1;
+      colorArray[i * 3] = spot.type === 'parking' ? 1.0 : 1.0;
+      colorArray[i * 3 + 1] = spot.type === 'parking' ? 1.0 : 1.0;
+      colorArray[i * 3 + 2] = spot.type === 'parking' ? 1.0 : 1.0;
     });
     return [posArray, colorArray];
   }, [data]);
@@ -181,13 +185,13 @@ function OptimizedHotspots({ data, activeEditId, onRightClickSpot, tooltipRef, i
     return new THREE.CanvasTexture(canvas);
   }, []);
 
-  // تحديث التول تيب فقط إذا لم نكن نحرك الكاميرا
   useFrame(() => {
     if (!tooltipRef.current || !hoverMeshRef.current || !hoverMeshRef.current.visible || isOrbitingRef.current || isDragging) return;
     
     _vector.copy(hoverMeshRef.current.position).project(camera);
-    tooltipRef.current.style.left = `${(_vector.x * 0.5 + 0.5) * window.innerWidth}px`;
-    tooltipRef.current.style.top = `${(-_vector.y * 0.5 + 0.5) * window.innerHeight - 30}px`;
+    // ✨ تحسين رقم 2: استخدام size.width بدل window.innerWidth لأداء أسرع بكثير
+    tooltipRef.current.style.left = `${(_vector.x * 0.5 + 0.5) * size.width}px`;
+    tooltipRef.current.style.top = `${(-_vector.y * 0.5 + 0.5) * size.height - 30}px`;
   });
 
   return (
@@ -201,7 +205,7 @@ function OptimizedHotspots({ data, activeEditId, onRightClickSpot, tooltipRef, i
         <pointsMaterial size={15} vertexColors map={dotTexture} transparent opacity={0.7} sizeAttenuation={false} depthWrite={false} />
       </points>
 
-      {/* 2. نقاط الاصطدام (خفية) - هنا الحل لسرعة التوهج */}
+      {/* 2. نقاط الاصطدام (خفية) */}
       <group>
         {data.map((spot, index) => (
           <mesh 
@@ -210,7 +214,6 @@ function OptimizedHotspots({ data, activeEditId, onRightClickSpot, tooltipRef, i
             onPointerEnter={(e) => {
               e.stopPropagation();
               if (activeEditId === spot.id) return;
-              // ✨ تحديث فوري لمكان التوهج (بدون انتظار الفريم)
               hoverMeshRef.current.position.set(spot.pos[0], spot.pos[1], spot.pos[2]);
               hoverMeshRef.current.material.color.setHex(spot.type === 'parking' ? 0xffffff : 0xffffff);
               hoverMeshRef.current.visible = true;
@@ -224,7 +227,13 @@ function OptimizedHotspots({ data, activeEditId, onRightClickSpot, tooltipRef, i
               tooltipRef.current.style.opacity = '0';
               tooltipRef.current.style.visibility = 'hidden';
             }}
-            onPointerDown={(e) => { e.stopPropagation(); onRightClickSpot(spot); }}
+            onPointerDown={(e) => { 
+              e.stopPropagation(); 
+              // ✨ حل المشكلة: التأكد من أن التعديل لا يفتح إلا بالكليك اليمين (رقم 2)
+              if (e.nativeEvent.button === 2) {
+                onRightClickSpot(spot); 
+              }
+            }}
           >
             <sphereGeometry args={[5, 8, 8]} />
             <meshBasicMaterial visible={false} />
@@ -604,7 +613,7 @@ export default function App() {
           screenSpacePanning={true}
           enableDamping={true} 
           dampingFactor={0.05} 
-          maxDistance={1120} // ✨ تم قفل أقصى مسافة إرجاع للكاميرا لتتطابق مع اللقطة الافتتاحية
+          maxDistance={1120}
           minDistance={80}
           maxPolarAngle={Math.PI / 2.1} 
           minPolarAngle={Math.PI / 12}
