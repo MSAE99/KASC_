@@ -249,3 +249,81 @@ body {
 
 .btn-delete { background: #bf4343; font-weight: bold; }
 .btn-delete:hover { background: #a03535; }
+/* =========================================
+   📱 Mobile Responsive Styles (جوال)
+========================================= */
+
+/* زر الهامبرجر (مخفي في شاشات الكمبيوتر) */
+.hamburger-menu {
+  display: none;
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 150;
+  background: rgba(0, 0, 0, 0.85);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 8px 15px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 22px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+  transition: all 0.3s;
+}
+
+.hamburger-menu:hover {
+  background: #007bff;
+}
+
+@media (max-width: 768px) {
+  /* إظهار زر الهامبرجر في الجوال */
+  .hamburger-menu {
+    display: block;
+  }
+
+  /* تصغير الشعار في شاشة التحميل */
+  .loading-logo {
+    max-width: 75vw; 
+  }
+
+  /* إخفاء القائمة الجانبية وتحويلها لقائمة منسدلة */
+  .sidebar-controls {
+    transform: translateX(-150%);
+    transition: transform 0.3s ease-in-out;
+    background: rgba(24, 24, 28, 0.95);
+    padding: 20px;
+    border-radius: 15px;
+    top: 70px;
+    left: 20px;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+
+  /* إظهار القائمة عند الضغط على الهامبرجر */
+  .sidebar-controls.open {
+    transform: translateX(0);
+  }
+
+  /* تصغير النص ليتناسب مع الجوال */
+  .hotspot-tooltip {
+    font-size: 12px;
+    padding: 8px 12px;
+  }
+
+  /* توسيط نوافذ الإضافة والتعديل في الجوال */
+  .right-panel {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    right: auto;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    pointer-events: none; /* للسماح بالضغط خلفها */
+  }
+
+  .modal-card {
+    width: 85vw !important;
+    max-width: 320px;
+    pointer-events: auto; /* تفعيل اللمس للنافذة فقط */
+  }
+}
