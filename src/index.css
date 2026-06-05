@@ -17,7 +17,7 @@ body {
 .loading-overlay {
   position: absolute;
   inset: 0;
-  background: #18181c;
+  background: #174c91;
   display: flex;
   flex-direction: column;
   justify-content: center;

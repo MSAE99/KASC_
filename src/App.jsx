@@ -181,9 +181,9 @@ function OptimizedHotspots({ data, activeEditId, onRightClickSpot, tooltipRef, i
         colorArray[i * 3 + 1] = 1.0; 
         colorArray[i * 3 + 2] = 1.0; 
       } else {
-        colorArray[i * 3] = 0.0;    
-        colorArray[i * 3 + 1] = 0.47; 
-        colorArray[i * 3 + 2] = 1.0; 
+        colorArray[i * 3] = 0.001;    
+        colorArray[i * 3 + 1] = 0.06; 
+        colorArray[i * 3 + 2] = 0.4; 
       }
     });
 
@@ -625,7 +625,7 @@ export default function App() {
         onCreated={({ scene, gl }) => {
           scene.background = new THREE.Color('#18181c');
           gl.toneMapping = THREE.LinearToneMapping; 
-          gl.toneMappingExposure = 3;
+          gl.toneMappingExposure = 2;
         }}
       >
         <ambientLight intensity={0.9} /> 
