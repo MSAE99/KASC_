@@ -27,6 +27,7 @@ body {
 
 .loading-logo {
   max-width: 600px;
+  width: 80%; /* تصغير الشعار للجوال */
   margin-bottom: 10px;
 }
 
@@ -43,11 +44,6 @@ body {
   to { transform: rotate(360deg); }
 }
 
-@keyframes pulse {
-  0%, 100% { opacity: 0.8; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.02); }
-}
-
 /* ---------------- Sidebar Controls ---------------- */
 .sidebar-controls {
   position: absolute;
@@ -57,6 +53,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  max-width: 320px; /* لترتيب الشكل */
 }
 
 .side-btn {
@@ -85,31 +82,105 @@ body {
   box-shadow: 0 0 15px rgba(0, 123, 255, 0.5);
 }
 
-.btn-copy-all {
-  background-color: #28a745;
-  margin-top: 10px;
+/* ---------------- القوائم المنسدلة (Accordion) ---------------- */
+.accordion-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
 }
+
+.accordion-header {
+  display: flex;
+  gap: 8px;
+}
+
+.accordion-header .side-btn {
+  flex: 1;
+  margin: 0;
+  min-width: 0;
+}
+
+.accordion-toggle {
+  background: rgba(0, 0, 0, 0.85);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 30px;
+  width: 45px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease-in-out;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+}
+
+.accordion-toggle:hover, .accordion-toggle.active {
+  background: #007bff;
+  border-color: white;
+  box-shadow: 0 0 15px rgba(0, 123, 255, 0.5);
+}
+
+.accordion-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  background: rgba(15, 15, 18, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 15px;
+  padding: 10px;
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.accordion-list::-webkit-scrollbar { width: 6px; }
+.accordion-list::-webkit-scrollbar-thumb { background: #007bff; border-radius: 4px; }
+
+.list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #ddd;
+  font-size: 13px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.list-item:hover, .list-item.active {
+  background: rgba(0, 123, 255, 0.25);
+  color: #fff;
+  border-left: 3px solid #007bff;
+}
+
+.btn-edit-small {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: #fff;
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.2s;
+}
+
+.btn-edit-small:hover { background: #007bff; }
+
+/* ---------------- Tools ---------------- */
+.btn-copy-all { background-color: #28a745; margin-top: 10px; }
 .btn-copy-all:hover { background-color: #218838; border-color: #218838; }
 
-.btn-reset {
-  background-color: #bf4343;
-  margin-top: 20px;
-}
+.btn-reset { background-color: #bf4343; margin-top: 20px; }
 .btn-reset:hover { background-color: #a03535; border-color: #a03535; }
 
-.copy-feedback {
-  color: #00ff66;
-  font-size: 13px;
-  font-weight: bold;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
-  margin-top: 5px;
-}
+.copy-feedback { color: #00ff66; font-size: 13px; font-weight: bold; text-shadow: 0 2px 4px rgba(0,0,0,0.5); margin-top: 5px; text-align: center; }
 
 /* ---------------- Tooltip ---------------- */
 .hotspot-tooltip {
   position: absolute;
   white-space: pre-wrap;
-  background: rgba(24, 24, 28, 0.9);
+  background: rgba(24, 24, 28, 0.95);
   backdrop-filter: blur(6px);
   color: #fff;
   padding: 10px 14px;
@@ -120,13 +191,13 @@ body {
   pointer-events: none;
   transform: translate(-50%, -100%);
   z-index: 30;
-  box-shadow: 0 6px 24px rgba(68, 68, 68, 0.5);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6);
   max-width: 290px;
   font-family: sans-serif;
-  border: 3px solid #333;
+  border: 2px solid #444;
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.05s ease-out;
+  transition: opacity 0.15s ease-out;
 }
 
 /* ---------------- Right Panel & Modals ---------------- */
@@ -140,120 +211,38 @@ body {
   gap: 15px;
 }
 
-.modal-card {
-  background: #222227;
-  padding: 20px;
-  border-radius: 25px;
-  color: #fff;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-}
+.modal-card { background: #222227; padding: 20px; border-radius: 25px; color: #fff; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+.modal-add { width: 300px; border: 1px solid #0077ff; }
+.modal-edit { width: 310px; border: 1px solid #ffffff; }
 
-.modal-add {
-  width: 300px;
-  border: 1px solid #0077ff;
-}
-
-.modal-edit {
-  width: 310px;
-  border: 1px solid #ffffff;
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.modal-title {
-  margin: 0;
-  font-size: 15px;
-}
+.modal-header { display: flex; justify-content: space-between; align-items: center; }
+.modal-title { margin: 0; font-size: 15px; }
 .modal-title.text-blue { color: #0077ff; }
 .modal-title.text-red { color: #ffffff; }
 
-.btn-copy-spot {
-  background: #333;
-  border: 1px solid #555;
-  color: #00ff66;
-  cursor: pointer;
-  font-size: 11px;
-  padding: 3px 8px;
-  border-radius: 4px;
-}
+.btn-copy-spot { background: #333; border: 1px solid #555; color: #00ff66; cursor: pointer; font-size: 11px; padding: 3px 8px; border-radius: 4px; }
 .btn-copy-spot:hover { background: #444; }
 
-.modal-hint {
-  font-size: 11px;
-  color: #aaa;
-  margin: 8px 0 12px;
-  line-height: 1.4;
-}
-
-.modal-label {
-  display: block;
-  margin: 12px 0 4px;
-  font-size: 12px;
-  color: #ccc;
-}
+.modal-hint { font-size: 11px; color: #aaa; margin: 8px 0 12px; line-height: 1.4; }
+.modal-label { display: block; margin: 12px 0 4px; font-size: 12px; color: #ccc; }
 .modal-label.mt-10 { margin-top: 10px; }
 
-.modal-input {
-  width: 100%;
-  padding: 8px;
-  background: #111;
-  border: 1px solid #444;
-  color: #fff;
-  border-radius: 4px;
-  resize: none;
-  box-sizing: border-box;
-  line-height: 1.4;
-  font-family: sans-serif;
-}
-.modal-input:focus { outline: none; border-color: #777; }
+.modal-input { width: 100%; padding: 8px; background: #111; border: 1px solid #444; color: #fff; border-radius: 8px; resize: none; box-sizing: border-box; line-height: 1.4; font-family: sans-serif; }
+.modal-input:focus { outline: none; border-color: #007bff; }
 
-.modal-actions {
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
-  margin-top: 16px;
-}
+.modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
+.modal-actions.space-between { justify-content: space-between; margin-top: 20px; gap: 8px; }
+.action-group { display: flex; gap: 6px; }
+.btn-action { padding: 8px 14px; border: none; color: #fff; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: bold; }
 
-.modal-actions.space-between {
-  justify-content: space-between;
-  margin-top: 20px;
-  gap: 8px;
-}
+.btn-cancel { background: #444; } .btn-cancel:hover { background: #555; }
+.btn-save { background: #0077ff; } .btn-save:hover { background: #0056b3; }
+.btn-save-edit { background: #0077ff; } .btn-save-edit:hover { background: #0056b3; }
+.btn-delete { background: #bf4343; } .btn-delete:hover { background: #a03535; }
 
-.action-group {
-  display: flex;
-  gap: 6px;
-}
-
-.btn-action {
-  padding: 6px 12px;
-  border: none;
-  color: #fff;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 12px;
-}
-
-.btn-cancel { background: #444; }
-.btn-cancel:hover { background: #555; }
-
-.btn-save { background: #0077ff; font-weight: bold; }
-.btn-save:hover { background: #0056b3; }
-
-.btn-save-edit { background: #0077ff; font-weight: bold; }
-.btn-save-edit:hover { background: #0056b3; }
-
-.btn-delete { background: #bf4343; font-weight: bold; }
-.btn-delete:hover { background: #a03535; }
 /* =========================================
    📱 Mobile Responsive Styles (جوال)
 ========================================= */
-
-/* زر الهامبرجر (مخفي في شاشات الكمبيوتر) */
 .hamburger-menu {
   display: none;
   position: absolute;
@@ -264,66 +253,45 @@ body {
   color: white;
   border: 1px solid rgba(255, 255, 255, 0.15);
   padding: 8px 15px;
-  border-radius: 8px;
+  border-radius: 12px;
   cursor: pointer;
   font-size: 22px;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
   transition: all 0.3s;
 }
 
-.hamburger-menu:hover {
-  background: #007bff;
-}
-
 @media (max-width: 768px) {
-  /* إظهار زر الهامبرجر في الجوال */
-  .hamburger-menu {
-    display: block;
-  }
+  .hamburger-menu { display: block; }
 
-  /* تصغير الشعار في شاشة التحميل */
-  .loading-logo {
-    max-width: 75vw; 
-  }
-
-  /* إخفاء القائمة الجانبية وتحويلها لقائمة منسدلة */
+  /* إخفاء القائمة وجعلها متحركة */
   .sidebar-controls {
     transform: translateX(-150%);
     transition: transform 0.3s ease-in-out;
     background: rgba(24, 24, 28, 0.95);
     padding: 20px;
-    border-radius: 15px;
+    border-radius: 20px;
     top: 70px;
-    left: 20px;
+    left: 15px;
     border: 1px solid rgba(255,255,255,0.1);
+    width: 80vw;
+    max-width: 300px;
   }
 
-  /* إظهار القائمة عند الضغط على الهامبرجر */
-  .sidebar-controls.open {
-    transform: translateX(0);
-  }
+  .sidebar-controls.open { transform: translateX(0); }
 
-  /* تصغير النص ليتناسب مع الجوال */
-  .hotspot-tooltip {
-    font-size: 12px;
-    padding: 8px 12px;
-  }
-
-  /* توسيط نوافذ الإضافة والتعديل في الجوال */
+  /* توسيط نافذة التعديل في منتصف شاشة الجوال */
   .right-panel {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
     right: auto;
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    pointer-events: none; /* للسماح بالضغط خلفها */
+    width: 90vw;
+    pointer-events: none;
+    align-items: center;
   }
 
   .modal-card {
-    width: 85vw !important;
-    max-width: 320px;
-    pointer-events: auto; /* تفعيل اللمس للنافذة فقط */
+    width: 100% !important;
+    pointer-events: auto;
   }
 }
