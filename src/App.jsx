@@ -8,14 +8,14 @@ const _dirToSpot = new THREE.Vector3();
 const _camDir = new THREE.Vector3();
 const _vector = new THREE.Vector3();
 
-// ⚠️ ضع مصفوفة النقاط الخاصة بك (99 نقطة) هنا بالكامل
+// مصفوفة النقاط الـ 99 الخاصة بك
 const initialHotspotsData = [
-  { id: 0, label: "Gate 1", pos: [0.617, 4.5, 533.24], type: "gate" },
-  { id: 1, label: "Gate 2", pos: [386.92, 4.5, 378.80], type: "gate" },
-  { id: 2, label: "Gate 3", pos: [542.04, 4.5, -0.315], type: "gate" },
-  { id: 3, label: "Gate 4", pos: [2.698, 4.5, -543.82], type: "gate" },
-  { id: 4, label: "Gate 5", pos: [-387.31, 4.5, -379.75], type: "gate" },
-  { id: 5, label: "Gate 6", pos: [-534.51, 4.5, 0.93], type: "gate" },
+  { id: 0, label: "Gate 1", pos: [0.617, 4.5, 533.24], type: "parking" },
+  { id: 1, label: "Gate 2", pos: [386.92, 4.5, 378.80], type: "parking" },
+  { id: 2, label: "Gate 3", pos: [542.04, 4.5, -0.315], type: "parking" },
+  { id: 3, label: "Gate 4", pos: [2.698, 4.5, -543.82], type: "parking" },
+  { id: 4, label: "Gate 5", pos: [-387.31, 4.5, -379.75], type: "parking" },
+  { id: 5, label: "Gate 6", pos: [-534.51, 4.5, 0.93], type: "parking" },
   { id: 6, label: "VIP 1 Parking: 128", pos: [104.51, 4.5, 158.40], type: "parking" },
   { id: 7, label: "VIP 2 Parking: 130", pos: [-102.18, 4.5, 159.59], type: "parking" },
   { id: 8, label: "A1 Parking: 71", pos: [155.07, 4.5, 99.22], type: "parking" },
@@ -112,9 +112,30 @@ const initialHotspotsData = [
   { id: 99, label: "POS 6\n38.71 m2\n2 Shutter", pos: [110.19, 29.73, 27.31], type: "gate" }
 ];
 
+// ✨ أداة التصنيف الذكية (Categorizer)
+const getCategory = (spot) => {
+  const label = spot.label.toLowerCase();
+  
+  if (spot.type === 'parking') {
+    if (label.startsWith('vip')) return { main: 'Gates & Parking Areas', sub: 'VIP Parking' };
+    if (label.startsWith('a1') || label.includes('a2')) return { main: 'Gates & Parking Areas', sub: 'Parking A' };
+    if (label.startsWith('b1') || label.includes('b2')) return { main: 'Gates & Parking Areas', sub: 'Parking B' };
+    if (label.startsWith('c1') || label.startsWith('c2') || label.includes('mdl')) return { main: 'Gates & Parking Areas', sub: 'Parking C' };
+    return { main: 'Gates & Parking Areas', sub: 'Gates' };
+  } else {
+    if (label.startsWith('egate')) return { main: 'Stadium', sub: 'eGates' };
+    if (label.startsWith('gate')) return { main: 'Stadium', sub: 'Gates' };
+    if (label.startsWith('ticket booth')) return { main: 'Stadium', sub: 'Ticket Booths' };
+    if (label.includes('entrance')) return { main: 'Stadium', sub: 'Entrances' };
+    if (label.startsWith('pos')) return { main: 'Stadium', sub: 'POS (Points of Sale)' };
+    if (label.startsWith('lvl')) return { main: 'Stadium', sub: 'Levels (LVL)' };
+    return { main: 'Stadium', sub: 'Stadium Info' };
+  }
+};
+
 function StadiumModel({ onLoadComplete, onMeshClick, onMeshDblClick, onClearHover }) {
   const { scene } = useGLTF("/045_King_Abdullah_Stadium-v2.glb");
-  
+
   useEffect(() => {
     if (scene) {
       scene.traverse((child) => {
@@ -123,7 +144,7 @@ function StadiumModel({ onLoadComplete, onMeshClick, onMeshDblClick, onClearHove
             child.material.map.generateMipmaps = true;
             child.material.map.minFilter = THREE.LinearMipmapLinearFilter;
             child.material.map.magFilter = THREE.LinearFilter;
-            child.material.map.anisotropy = 4; 
+            child.material.map.anisotropy = 4;
             child.material.map.needsUpdate = true;
           }
           child.material.depthWrite = true;
@@ -136,11 +157,11 @@ function StadiumModel({ onLoadComplete, onMeshClick, onMeshDblClick, onClearHove
 
   return (
     <Bvh firstHitOnly>
-      <primitive 
-        object={scene} 
+      <primitive
+        object={scene}
         onClick={(e) => {
           e.stopPropagation();
-          onClearHover(); // إخفاء النص عند النقر في مكان فارغ فقط
+          onClearHover();
           if (e.nativeEvent.button === 0 && e.point) {
             onMeshClick(e.point);
           }
@@ -151,31 +172,41 @@ function StadiumModel({ onLoadComplete, onMeshClick, onMeshDblClick, onClearHove
             onMeshDblClick(e.point);
           }
         }}
-        onPointerEnter={(e) => e.stopPropagation()} 
+        onPointerEnter={(e) => e.stopPropagation()}
         onPointerDown={(e) => e.stopPropagation()}
       />
     </Bvh>
   );
 }
 
-function OptimizedHotspots({ data, activeEditId, onRightClickSpot, tooltipRef, isOrbitingRef, isDragging, activeTooltipId, setActiveTooltipId }) {
-  const hoverMeshRef = useRef(); 
-  const hoveredIndexRef = useRef(null); 
-  const longPressTimer = useRef(null); 
-  
-  const { camera, size } = useThree(); 
+function OptimizedHotspots({ data, activeEditId, onRightClickSpot, tooltipRef, isOrbitingRef, isDragging, activeTooltipId, onSpotSelect }) {
+  const hoverMeshRef = useRef();
+  const hoveredIndexRef = useRef(null);
+  const longPressTimer = useRef(null);
+
+  const { camera, size } = useThree();
 
   const [positions, colors] = useMemo(() => {
     const posArray = new Float32Array(data.length * 3);
     const colorArray = new Float32Array(data.length * 3);
+    const tempColor = new THREE.Color();
+
     data.forEach((spot, i) => {
       posArray[i * 3] = spot.pos[0];
       posArray[i * 3 + 1] = spot.pos[1];
       posArray[i * 3 + 2] = spot.pos[2];
-      colorArray[i * 3] = spot.type === 'parking' ? 1.0 : 1.0;
-      colorArray[i * 3 + 1] = spot.type === 'parking' ? 1.0 : 1.0;
-      colorArray[i * 3 + 2] = spot.type === 'parking' ? 1.0 : 1.0;
+
+      if (spot.type === 'parking') {
+        tempColor.set('#007bff'); 
+      } else {
+        tempColor.set('#052272'); 
+      }
+
+      colorArray[i * 3] = tempColor.r;       
+      colorArray[i * 3 + 1] = tempColor.g;   
+      colorArray[i * 3 + 2] = tempColor.b;   
     });
+
     return [posArray, colorArray];
   }, [data]);
 
@@ -189,26 +220,23 @@ function OptimizedHotspots({ data, activeEditId, onRightClickSpot, tooltipRef, i
 
   useFrame(() => {
     if (!tooltipRef.current) return;
-    
-    // إخفاء النص فقط في حالة السحب للسلة (Drag)
+
     if (isDragging) {
-       if (tooltipRef.current.style.visibility !== 'hidden') {
-          tooltipRef.current.style.opacity = '0';
-          tooltipRef.current.style.visibility = 'hidden';
-          if (hoverMeshRef.current) hoverMeshRef.current.visible = false;
-       }
-       return;
+      if (tooltipRef.current.style.visibility !== 'hidden') {
+        tooltipRef.current.style.opacity = '0';
+        tooltipRef.current.style.visibility = 'hidden';
+        if (hoverMeshRef.current) hoverMeshRef.current.visible = false;
+      }
+      return;
     }
 
     let targetSpot = null;
 
-    // ✨ إذا الكاميرا تتحرك (دوران أو زوم): نبقي التوهج فقط للنقطة المحددة (المضغوط عليها)
     if (isOrbitingRef.current) {
       if (activeTooltipId !== null) {
         targetSpot = data.find(s => s.id === activeTooltipId);
       }
     } else {
-      // إذا الكاميرا ثابتة: الأولوية للمرور ثم للمثبتة
       if (hoveredIndexRef.current !== null) {
         targetSpot = data[hoveredIndexRef.current];
       } else if (activeTooltipId !== null) {
@@ -221,7 +249,11 @@ function OptimizedHotspots({ data, activeEditId, onRightClickSpot, tooltipRef, i
 
       if (hoverMeshRef.current) {
         hoverMeshRef.current.position.copy(_spotPos);
-        hoverMeshRef.current.material.color.setHex(0xffffff);
+        if(targetSpot.type === 'parking' ){
+          hoverMeshRef.current.material.color.setHex(0x007bff);
+        } else {
+          hoverMeshRef.current.material.color.setHex(0x052272);
+        }
         hoverMeshRef.current.visible = true;
       }
 
@@ -258,12 +290,12 @@ function OptimizedHotspots({ data, activeEditId, onRightClickSpot, tooltipRef, i
           <bufferAttribute attach="attributes-position" args={[positions, 3]} />
           <bufferAttribute attach="attributes-color" args={[colors, 3]} />
         </bufferGeometry>
-        <pointsMaterial size={15} vertexColors map={dotTexture} transparent opacity={0.7} sizeAttenuation={false} depthWrite={false} />
+        <pointsMaterial size={15} vertexColors map={dotTexture} transparent opacity={0.8} sizeAttenuation={false} depthWrite={false} />
       </points>
 
       <group>
         {data.map((spot, index) => (
-          <mesh 
+          <mesh
             key={spot.id}
             position={spot.pos}
             onPointerEnter={(e) => {
@@ -277,25 +309,24 @@ function OptimizedHotspots({ data, activeEditId, onRightClickSpot, tooltipRef, i
             }}
             onPointerUp={(e) => {
               e.stopPropagation();
-              clearTimeout(longPressTimer.current); 
+              clearTimeout(longPressTimer.current);
             }}
-            onPointerDown={(e) => { 
-              e.stopPropagation(); 
-              
+            onPointerDown={(e) => {
+              e.stopPropagation();
+
               if (e.nativeEvent.button === 2) {
-                onRightClickSpot(spot); 
+                onRightClickSpot(spot);
                 return;
               }
 
-              // تفعيل النص والتوهج عند النقر (ستبقى متوهجة)
-              setActiveTooltipId(spot.id);
+              // ✨ استدعاء الدالة المجمعة من الأعلى للتزامن
+              onSpotSelect(spot);
 
               longPressTimer.current = setTimeout(() => {
                 onRightClickSpot(spot);
-              }, 500); 
+              }, 500);
             }}
-            // ✨ الحل النهائي لمشكلة التعديل 1: حجب النقرة عن الملعب!
-            onClick={(e) => e.stopPropagation()} 
+            onClick={(e) => e.stopPropagation()}
             onDoubleClick={(e) => e.stopPropagation()}
           >
             <sphereGeometry args={[8, 8, 8]} />
@@ -305,7 +336,7 @@ function OptimizedHotspots({ data, activeEditId, onRightClickSpot, tooltipRef, i
       </group>
 
       <points ref={hoverMeshRef} visible={false}>
-        <bufferGeometry><bufferAttribute attach="attributes-position" args={[new Float32Array([0,0,0]), 3]} /></bufferGeometry>
+        <bufferGeometry><bufferAttribute attach="attributes-position" args={[new Float32Array([0, 0, 0]), 3]} /></bufferGeometry>
         <pointsMaterial size={30} map={dotTexture} transparent opacity={1} sizeAttenuation={false} depthWrite={false} />
       </points>
     </group>
@@ -323,11 +354,10 @@ export default function App() {
   });
 
   const [history, setHistory] = useState([]);
-  
   const saveToHistory = (currentState) => {
     setHistory(prev => {
       const newHistory = [...prev, currentState];
-      return newHistory.slice(-20); 
+      return newHistory.slice(-20);
     });
   };
 
@@ -340,25 +370,26 @@ export default function App() {
     setTimeout(() => setCopyFeedback(""), 2000);
   };
 
-  const [filter, setFilter] = useState("all");
   const [isLoading, setIsLoading] = useState(true);
-  const [copyFeedback, setCopyFeedback] = useState(""); 
-  
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isGatesOpen, setIsGatesOpen] = useState(false);
-  const [isParkingOpen, setIsParkingOpen] = useState(false);
-  const [activeTooltipId, setActiveTooltipId] = useState(null); 
+  const [copyFeedback, setCopyFeedback] = useState("");
 
-  const tooltipRef = useRef(null); 
-  const editMeshRef = useRef(null); 
-  const orbitTimeoutRef = useRef(null); 
-  
+  // ✨ حالات القائمة الجديدة والتزامن
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isAllMenuOpen, setIsAllMenuOpen] = useState(true); // القائمة الرئيسية
+  const [openMainCat, setOpenMainCat] = useState(null); // Stadium أو Parking
+  const [openSubCat, setOpenSubCat] = useState(null); // eGates أو غيره
+  const [activeTooltipId, setActiveTooltipId] = useState(null);
+
+  const tooltipRef = useRef(null);
+  const editMeshRef = useRef(null);
+  const orbitTimeoutRef = useRef(null);
+
   const [activeEditId, setActiveEditId] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editSpotLabel, setEditSpotLabel] = useState("");
   const [editSpotType, setEditSpotType] = useState("gate");
-  const backupHotspotsRef = useRef(null); 
-  
+  const backupHotspotsRef = useRef(null);
+
   const [isDragging, setIsDragging] = useState(false);
 
   const [showAddModal, setShowAddModal] = useState(false);
@@ -368,16 +399,57 @@ export default function App() {
 
   const isOrbitingRef = useRef(false);
 
+  // ✨ إخفاء التوهج الخارجي ورجوع القائمة للوضع الافتراضي
+  const resetToAllHotspots = () => {
+    setIsAllMenuOpen(false); // طي القائمة لإظهار (All Hotspots) فقط
+    setOpenMainCat(null);
+    setOpenSubCat(null);
+  };
+
   const clearHoverEffect = () => {
     setActiveTooltipId(null);
   };
+
+  // ✨ تزامن ضغط النقطة في 3D مع فتح القائمة الجانبية تلقائياً
+  const handleSpotSelect = (spot) => {
+    setActiveTooltipId(spot.id);
+    const cat = getCategory(spot);
+    setIsAllMenuOpen(true);
+    setOpenMainCat(cat.main);
+    setOpenSubCat(cat.sub);
+    // في الجوال، قد نغلق القائمة لتسهيل الرؤية
+    if (window.innerWidth <= 768) setIsMobileMenuOpen(false);
+  };
+
+  // ✨ تصنيف النقاط للقائمة الجانبية والفلترة البصرية (يخفي باقي الأقسام)
+  const groupedHotspots = useMemo(() => {
+    const groups = { 'Stadium': {}, 'Gates & Parking Areas': {} };
+    hotspots.forEach(spot => {
+      const { main, sub } = getCategory(spot);
+      if (!groups[main]) groups[main] = {};
+      if (!groups[main][sub]) groups[main][sub] = [];
+      groups[main][sub].push(spot);
+    });
+    return groups;
+  }, [hotspots]);
+
+  // ✨ الفلترة البصرية: إخفاء النقاط بناءً على القسم المفتوح في القائمة
+  const filteredSpots = useMemo(() => {
+    if (!isAllMenuOpen) return hotspots; 
+    if (!openMainCat) return hotspots;   
+    if (!openSubCat) return hotspots.filter(s => getCategory(s).main === openMainCat);
+    return hotspots.filter(s => {
+      const cat = getCategory(s);
+      return cat.main === openMainCat && cat.sub === openSubCat;
+    }); 
+  }, [hotspots, isAllMenuOpen, openMainCat, openSubCat]);
 
   useEffect(() => {
     if (activeEditId === null) return;
     const moveStep = 2.0;
     const handleKeyDown = (e) => {
       const tag = e.target.tagName.toLowerCase();
-      if (tag === 'input' || tag === 'textarea') return; 
+      if (tag === 'input' || tag === 'textarea') return;
 
       const key = e.key.toLowerCase();
       if (['w', 'a', 's', 'd', 'z', 'x'].includes(key)) {
@@ -388,9 +460,9 @@ export default function App() {
             if (key === 'd') x += moveStep;
             if (key === 'w') y += moveStep;
             if (key === 's') y -= moveStep;
-            if (key === 'z') z -= moveStep; 
-            if (key === 'x') z += moveStep; 
-            y = Math.max(5.5, y); 
+            if (key === 'z') z -= moveStep;
+            if (key === 'x') z += moveStep;
+            y = Math.max(5.5, y);
             return { ...spot, pos: [parseFloat(x.toFixed(3)), parseFloat(y.toFixed(3)), parseFloat(z.toFixed(3))] };
           }
           return spot;
@@ -405,14 +477,6 @@ export default function App() {
     localStorage.setItem("stadium_r3f_hotspots", JSON.stringify(hotspots));
   }, [hotspots]);
 
-  const filteredSpots = useMemo(() => {
-    return hotspots.filter(spot => {
-      if (filter === "gates") return spot.type === "gate";
-      if (filter === "parking") return spot.type === "parking";
-      return true;
-    });
-  }, [hotspots, filter]);
-
   const handleMeshClick = (point) => {
     if (activeEditId === null || isOrbitingRef.current || isDragging) return;
     setHotspots(prev => prev.map(spot => {
@@ -425,7 +489,7 @@ export default function App() {
   };
 
   const handleMeshDblClick = (point) => {
-    if (activeEditId !== null) return; 
+    if (activeEditId !== null) return;
     setNewSpotPos([parseFloat(point.x.toFixed(3)), Math.max(4.5, parseFloat(point.y.toFixed(3))), parseFloat(point.z.toFixed(3))]);
     setNewSpotLabel("");
     setNewSpotType("gate");
@@ -434,20 +498,22 @@ export default function App() {
 
   const handleSaveNewSpot = () => {
     if (!newSpotLabel.trim()) return;
-    saveToHistory(hotspots); 
+    saveToHistory(hotspots);
     const newSpot = { id: Date.now(), label: newSpotLabel, pos: newSpotPos, type: newSpotType };
     setHotspots(prev => [...prev, newSpot]);
     setShowAddModal(false);
   };
 
+  // ✨ تفعيل زر الإديت: (يرجعك لوضعية All Hotspots كما طلبت)
   const handleRightClickSpot = (spot) => {
     clearHoverEffect();
-    backupHotspotsRef.current = [...hotspots]; 
+    backupHotspotsRef.current = [...hotspots];
     setActiveEditId(spot.id);
     setEditSpotLabel(spot.label);
     setEditSpotType(spot.type);
     setShowEditModal(true);
-    setIsMobileMenuOpen(false); 
+    setIsMobileMenuOpen(false);
+    resetToAllHotspots(); // هنا يتم الرجوع للـ All Hotspots
   };
 
   const handleSaveEditSpot = () => {
@@ -467,7 +533,7 @@ export default function App() {
 
   const handleCancelEditSpot = () => {
     if (backupHotspotsRef.current && activeEditId !== null) {
-      setHotspots(backupHotspotsRef.current); 
+      setHotspots(backupHotspotsRef.current);
       backupHotspotsRef.current = null;
     }
     setActiveEditId(null);
@@ -491,11 +557,12 @@ export default function App() {
       setHotspots(initialHotspotsData);
       setActiveEditId(null);
       setShowEditModal(false);
+      resetToAllHotspots();
     }
   };
 
   const handleCopyAllData = () => {
-    const formattedArray = "[\n" + hotspots.map(s => 
+    const formattedArray = "[\n" + hotspots.map(s =>
       `  { id: ${s.id}, label: ${JSON.stringify(s.label)}, pos: [${s.pos.join(', ')}], type: "${s.type}" }`
     ).join(",\n") + "\n];";
     navigator.clipboard.writeText(formattedArray);
@@ -523,7 +590,7 @@ export default function App() {
 
   return (
     <div className="app-container" onContextMenu={(e) => e.preventDefault()}>
-      
+
       {isLoading && (
         <div className="loading-overlay">
           <img src="/Ministry-of-Sports-1.png" alt="Loading Stadium..." className="loading-logo" />
@@ -536,51 +603,100 @@ export default function App() {
       </button>
 
       <div className={`sidebar-controls ${isMobileMenuOpen ? 'open' : ''}`}>
-        <button className={`side-btn ${filter === 'all' ? 'active' : ''}`} onClick={() => { setFilter("all"); setIsMobileMenuOpen(false); }}>All Hotspots</button>
         
+        {/* ✨ قائمة All Hotspots الرئيسية (Nested Accordion) */}
         <div className="accordion-container">
           <div className="accordion-header">
-            <button className={`side-btn ${filter === 'gates' ? 'active' : ''}`} onClick={() => { setFilter("gates"); setIsGatesOpen(true); setIsParkingOpen(false); }}>Gates & Stadium</button>
-            <button className={`accordion-toggle ${isGatesOpen ? 'active' : ''}`} onClick={() => setIsGatesOpen(!isGatesOpen)}>{isGatesOpen ? '▲' : '▼'}</button>
+            <button 
+              className={`side-btn ${!isAllMenuOpen ? 'active' : ''}`} 
+              onClick={() => { setIsAllMenuOpen(!isAllMenuOpen); if(isAllMenuOpen){ setOpenMainCat(null); setOpenSubCat(null); } }}
+            >
+              All Hotspots
+            </button>
+            <button 
+              className={`accordion-toggle ${isAllMenuOpen ? 'active' : ''}`} 
+              onClick={() => { setIsAllMenuOpen(!isAllMenuOpen); if(isAllMenuOpen){ setOpenMainCat(null); setOpenSubCat(null); } }}
+            >
+              {isAllMenuOpen ? '▲' : '▼'}
+            </button>
           </div>
-          {isGatesOpen && (
-            <div className="accordion-list">
-              {hotspots.filter(s => s.type === 'gate').map(spot => (
-                <div key={spot.id} className={`list-item ${activeTooltipId === spot.id ? 'active' : ''}`} onClick={() => { setActiveTooltipId(spot.id); if(window.innerWidth <= 768) setIsMobileMenuOpen(false); }}>
-                  <span>{spot.label.split('\n')[0]}</span>
-                  <button className="btn-edit-small" onClick={(e) => { e.stopPropagation(); handleRightClickSpot(spot); }}>✏️ Edit</button>
+
+          {isAllMenuOpen && (
+            <div className="accordion-list main-cat-list">
+              
+              {/* ✨ التصنيفات الأساسية (Stadium / Parking) */}
+              {Object.keys(groupedHotspots).map(mainCat => (
+                <div key={mainCat} className="accordion-container nested">
+                  <div className="accordion-header">
+                    <button 
+                      className={`side-btn sub-btn ${openMainCat === mainCat ? 'active' : ''}`} 
+                      onClick={() => { setOpenMainCat(openMainCat === mainCat ? null : mainCat); setOpenSubCat(null); }}
+                    >
+                      {mainCat}
+                    </button>
+                    <button 
+                      className={`accordion-toggle ${openMainCat === mainCat ? 'active' : ''}`} 
+                      onClick={() => { setOpenMainCat(openMainCat === mainCat ? null : mainCat); setOpenSubCat(null); }}
+                    >
+                      {openMainCat === mainCat ? '▲' : '▼'}
+                    </button>
+                  </div>
+
+                  {/* ✨ الأقسام الفرعية (Gates, eGates, Parking A...) */}
+                  {openMainCat === mainCat && (
+                    <div className="accordion-list sub-cat-list">
+                      {Object.keys(groupedHotspots[mainCat]).map(subCat => (
+                        <div key={subCat} className="accordion-container nested-sub">
+                          <div className="accordion-header">
+                            <button 
+                              className={`side-btn sub-sub-btn ${openSubCat === subCat ? 'active' : ''}`} 
+                              onClick={() => setOpenSubCat(openSubCat === subCat ? null : subCat)}
+                            >
+                              {subCat}
+                            </button>
+                            <button 
+                              className={`accordion-toggle sub-toggle ${openSubCat === subCat ? 'active' : ''}`} 
+                              onClick={() => setOpenSubCat(openSubCat === subCat ? null : subCat)}
+                            >
+                              {openSubCat === subCat ? '▲' : '▼'}
+                            </button>
+                          </div>
+
+                          {/* ✨ النقاط النهائية وزر Edit */}
+                          {openSubCat === subCat && (
+                            <div className="accordion-list items-list">
+                              {groupedHotspots[mainCat][subCat].map(spot => (
+                                <div 
+                                  key={spot.id} 
+                                  className={`list-item ${activeTooltipId === spot.id ? 'active' : ''}`} 
+                                  onClick={() => handleSpotSelect(spot)}
+                                >
+                                  <span>{spot.label.split('\n')[0]}</span>
+                                  <button className="btn-edit-small" onClick={(e) => { e.stopPropagation(); handleRightClickSpot(spot); }}>✏️ Edit</button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
           )}
         </div>
 
-        <div className="accordion-container">
-          <div className="accordion-header">
-            <button className={`side-btn ${filter === 'parking' ? 'active' : ''}`} onClick={() => { setFilter("parking"); setIsParkingOpen(true); setIsGatesOpen(false); }}>Parking Areas</button>
-            <button className={`accordion-toggle ${isParkingOpen ? 'active' : ''}`} onClick={() => setIsParkingOpen(!isParkingOpen)}>{isParkingOpen ? '▲' : '▼'}</button>
-          </div>
-          {isParkingOpen && (
-            <div className="accordion-list">
-              {hotspots.filter(s => s.type === 'parking').map(spot => (
-                <div key={spot.id} className={`list-item ${activeTooltipId === spot.id ? 'active' : ''}`} onClick={() => { setActiveTooltipId(spot.id); if(window.innerWidth <= 768) setIsMobileMenuOpen(false); }}>
-                  <span>{spot.label.split('\n')[0]}</span>
-                  <button className="btn-edit-small" onClick={(e) => { e.stopPropagation(); handleRightClickSpot(spot); }}>✏️ Edit</button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="accordion-header" style={{ marginTop: '10px' }}>
+        {/* أزرار النسخ والتراجع */}
+        <div className="accordion-header" style={{ marginTop: '15px' }}>
           <button className="side-btn btn-copy-all" onClick={handleCopyAllData}>📋 Copy All</button>
-          <button 
-            className="accordion-toggle" 
-            style={{ 
+          <button
+            className="accordion-toggle"
+            style={{
               backgroundColor: activeTooltipId === null ? 'rgba(255,255,255,0.1)' : '#17a2b8',
               borderColor: activeTooltipId === null ? 'transparent' : 'white',
               cursor: activeTooltipId === null ? 'not-allowed' : 'pointer'
-            }} 
+            }}
             onClick={handleCopySelectedSpot}
             disabled={activeTooltipId === null}
             title="Copy Selected Spot"
@@ -589,15 +705,15 @@ export default function App() {
           </button>
         </div>
 
-        <div className="accordion-header" style={{ marginTop: '10px' }}>
+        <div className="accordion-header" style={{ marginTop: '5px' }}>
           <button className="side-btn btn-reset" onClick={handleResetToDefault}>Reset Layout</button>
-          <button 
-            className="accordion-toggle" 
-            style={{ 
+          <button
+            className="accordion-toggle"
+            style={{
               backgroundColor: history.length === 0 ? 'rgba(255,255,255,0.1)' : '#ff9800',
               borderColor: history.length === 0 ? 'transparent' : 'white',
               cursor: history.length === 0 ? 'not-allowed' : 'pointer'
-            }} 
+            }}
             onClick={handleUndo}
             disabled={history.length === 0}
             title="Undo Last Action"
@@ -605,7 +721,7 @@ export default function App() {
             ↩️
           </button>
         </div>
-        
+
         {copyFeedback && <span className="copy-feedback">{copyFeedback}</span>}
       </div>
 
@@ -632,7 +748,7 @@ export default function App() {
         {showEditModal && (
           <div className="modal-card modal-edit">
             <div className="modal-header">
-               <h3 className="modal-title text-red">Edit Hotspot ✏️</h3>
+              <h3 className="modal-title text-red">Edit Hotspot ✏️</h3>
             </div>
             <p className="modal-hint">💡 Hint: W/S (Y), A/D (X), Z/X (Z) or Drag.</p>
             <label className="modal-label">Edit Label Text:</label>
@@ -653,22 +769,22 @@ export default function App() {
         )}
       </div>
 
-      <Canvas 
-        dpr={typeof window !== 'undefined' ? Math.min(window.devicePixelRatio, 1.5) : 1} 
+      <Canvas
+        dpr={typeof window !== 'undefined' ? Math.min(window.devicePixelRatio, 1.5) : 1}
         camera={{ position: [0, 500, 1000], fov: 45, near: 5, far: 10000 }}
         gl={{ antialias: true, alpha: false, powerPreference: "high-performance", precision: "highp" }}
         onCreated={({ scene, gl }) => {
           scene.background = new THREE.Color('#18181c');
-          gl.toneMapping = THREE.LinearToneMapping; 
+          gl.toneMapping = THREE.LinearToneMapping;
           gl.toneMappingExposure = 2;
         }}
       >
-        <ambientLight intensity={0.7} /> 
+        <ambientLight intensity={0.7} />
         <directionalLight position={[800, 2000, 800]} intensity={1.0} color="#ffffff" />
         <directionalLight position={[-800, 1000, -800]} intensity={0.4} color="#ffffff" />
-        
-        <StadiumModel 
-          onLoadComplete={() => setIsLoading(false)} 
+
+        <StadiumModel
+          onLoadComplete={() => setIsLoading(false)}
           onMeshClick={handleMeshClick}
           onMeshDblClick={handleMeshDblClick}
           onClearHover={clearHoverEffect}
@@ -680,7 +796,7 @@ export default function App() {
             if (!currentSpot) return null;
             return (
               <DragControls
-                key={activeEditId} 
+                key={activeEditId}
                 onDragStart={() => {
                   saveToHistory(hotspots);
                   setIsDragging(true);
@@ -690,13 +806,13 @@ export default function App() {
                     const finalGlobalPos = new THREE.Vector3();
                     editMeshRef.current.getWorldPosition(finalGlobalPos);
                     const safeY = Math.max(4.5, parseFloat(finalGlobalPos.y.toFixed(3)));
-                    setHotspots(prev => prev.map(spot => 
-                      spot.id === activeEditId 
-                        ? { ...spot, pos: [parseFloat(finalGlobalPos.x.toFixed(3)), safeY, parseFloat(finalGlobalPos.z.toFixed(3))] } 
+                    setHotspots(prev => prev.map(spot =>
+                      spot.id === activeEditId
+                        ? { ...spot, pos: [parseFloat(finalGlobalPos.x.toFixed(3)), safeY, parseFloat(finalGlobalPos.z.toFixed(3))] }
                         : spot
                     ));
                   }
-                  setTimeout(() => setIsDragging(false), 50); 
+                  setTimeout(() => setIsDragging(false), 50);
                 }}
               >
                 <points ref={editMeshRef} position={[currentSpot.pos[0], currentSpot.pos[1], currentSpot.pos[2]]}>
@@ -708,43 +824,43 @@ export default function App() {
           })()
         )}
 
-        <OptimizedHotspots 
-          data={filteredSpots} 
+        <OptimizedHotspots
+          data={filteredSpots}
           activeEditId={activeEditId}
           onRightClickSpot={handleRightClickSpot}
           tooltipRef={tooltipRef}
-          isOrbitingRef={isOrbitingRef} 
+          isOrbitingRef={isOrbitingRef}
           isDragging={isDragging}
           activeTooltipId={activeTooltipId}
-          setActiveTooltipId={setActiveTooltipId}
+          onSpotSelect={handleSpotSelect}
         />
 
-        <OrbitControls 
-          makeDefault 
-          enabled={!isDragging} 
-          enableZoom={true} 
+        <OrbitControls
+          makeDefault
+          enabled={!isDragging}
+          enableZoom={true}
           zoomSpeed={2.5}
           screenSpacePanning={true}
-          enableDamping={true} 
-          dampingFactor={0.05} 
-          maxDistance={1120} 
+          enableDamping={true}
+          dampingFactor={0.05}
+          maxDistance={1120}
           minDistance={80}
-          maxPolarAngle={Math.PI / 2.1} 
+          maxPolarAngle={Math.PI / 2.1}
           minPolarAngle={Math.PI / 12}
-          onStart={() => { 
-            isOrbitingRef.current = true; 
+          onStart={() => {
+            isOrbitingRef.current = true;
             clearTimeout(orbitTimeoutRef.current);
           }}
-          onChange={() => { 
-            isOrbitingRef.current = true; 
+          onChange={() => {
+            isOrbitingRef.current = true;
             clearTimeout(orbitTimeoutRef.current);
             orbitTimeoutRef.current = setTimeout(() => {
-               isOrbitingRef.current = false;
+              isOrbitingRef.current = false;
             }, 100);
           }}
-          onEnd={() => { 
+          onEnd={() => {
             clearTimeout(orbitTimeoutRef.current);
-            isOrbitingRef.current = false; 
+            isOrbitingRef.current = false;
           }}
         />
       </Canvas>

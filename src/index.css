@@ -27,7 +27,7 @@ body {
 
 .loading-logo {
   max-width: 600px;
-  width: 80%; /* تصغير الشعار للجوال */
+  width: 80%;
   margin-bottom: 10px;
 }
 
@@ -53,7 +53,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  max-width: 320px; /* لترتيب الشكل */
+  max-width: 340px;
 }
 
 .side-btn {
@@ -82,7 +82,7 @@ body {
   box-shadow: 0 0 15px rgba(0, 123, 255, 0.5);
 }
 
-/* ---------------- القوائم المنسدلة (Accordion) ---------------- */
+/* ---------------- القوائم المنسدلة الجديدة (Nested Accordion) ---------------- */
 .accordion-container {
   display: flex;
   flex-direction: column;
@@ -121,20 +121,70 @@ body {
   box-shadow: 0 0 15px rgba(0, 123, 255, 0.5);
 }
 
-.accordion-list {
+/* القائمة الرئيسية المفتوحة (الخلفية الشفافة) */
+.main-cat-list {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  max-height: none !important;
+  overflow-y: visible !important;
+  gap: 10px !important;
+  margin-top: 5px;
+}
+
+/* أزرار الأقسام (Stadium / Parking) */
+.sub-btn {
+  background: rgba(0,0,0,0.6) !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+  color: #eee !important;
+  font-size: 13px !important;
+}
+.sub-btn:hover { background: #007bff !important; }
+.sub-btn.active { background: #007bff !important; border-color: white !important; }
+
+/* القوائم الفرعية المفتوحة */
+.sub-cat-list {
+  background: transparent !important;
+  border: none !important;
+  border-left: 2px solid #007bff !important;
+  padding: 0 0 0 10px !important;
+  border-radius: 0 !important;
+  max-height: none !important;
+  overflow-y: visible !important;
+  margin-top: 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* أزرار التصنيفات (eGates, Parking A ...) */
+.sub-sub-btn {
+  background: rgba(0,0,0,0.4) !important;
+  border: 1px solid transparent !important;
+  color: #ccc !important;
+  font-size: 12px !important;
+  text-align: left !important;
+}
+.sub-sub-btn:hover { color: white !important; border-color: rgba(255,255,255,0.2) !important; }
+.sub-sub-btn.active { color: #fff !important; background: rgba(0, 123, 255, 0.4) !important; border-color: #007bff !important; }
+.sub-toggle { width: 40px !important; font-size: 10px; }
+
+/* قائمة النقاط النهائية (العناصر التي بداخلها Edit) */
+.items-list {
+  background: rgba(0,0,0,0.8) !important;
+  max-height: 220px !important;
+  border: none !important;
+  border-left: 2px solid #17a2b8 !important;
+  border-radius: 0 8px 8px 0 !important;
+  padding: 8px !important;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 5px;
-  background: rgba(15, 15, 18, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 15px;
-  padding: 10px;
-  max-height: 250px;
-  overflow-y: auto;
+  scroll-behavior: smooth;
 }
-
-.accordion-list::-webkit-scrollbar { width: 6px; }
-.accordion-list::-webkit-scrollbar-thumb { background: #007bff; border-radius: 4px; }
+.items-list::-webkit-scrollbar { width: 5px; }
+.items-list::-webkit-scrollbar-thumb { background: #17a2b8; border-radius: 4px; }
 
 .list-item {
   display: flex;
@@ -168,10 +218,10 @@ body {
 .btn-edit-small:hover { background: #007bff; }
 
 /* ---------------- Tools ---------------- */
-.btn-copy-all { background-color: #28a745; margin-top: 10px; }
+.btn-copy-all { background-color: #28a745; }
 .btn-copy-all:hover { background-color: #218838; border-color: #218838; }
 
-.btn-reset { background-color: #bf4343; margin-top: 20px; }
+.btn-reset { background-color: #bf4343; }
 .btn-reset:hover { background-color: #a03535; border-color: #a03535; }
 
 .copy-feedback { color: #00ff66; font-size: 13px; font-weight: bold; text-shadow: 0 2px 4px rgba(0,0,0,0.5); margin-top: 5px; text-align: center; }
@@ -262,8 +312,6 @@ body {
 
 @media (max-width: 768px) {
   .hamburger-menu { display: block; }
-
-  /* إخفاء القائمة وجعلها متحركة */
   .sidebar-controls {
     transform: translateX(-150%);
     transition: transform 0.3s ease-in-out;
@@ -273,13 +321,10 @@ body {
     top: 70px;
     left: 15px;
     border: 1px solid rgba(255,255,255,0.1);
-    width: 80vw;
-    max-width: 300px;
+    width: 85vw;
+    max-width: 320px;
   }
-
   .sidebar-controls.open { transform: translateX(0); }
-
-  /* توسيط نافذة التعديل في منتصف شاشة الجوال */
   .right-panel {
     top: 50%;
     left: 50%;
@@ -289,9 +334,5 @@ body {
     pointer-events: none;
     align-items: center;
   }
-
-  .modal-card {
-    width: 100% !important;
-    pointer-events: auto;
-  }
+  .modal-card { width: 100% !important; pointer-events: auto; }
 }
