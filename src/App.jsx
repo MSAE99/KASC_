@@ -8,14 +8,14 @@ const _dirToSpot = new THREE.Vector3();
 const _camDir = new THREE.Vector3();
 const _vector = new THREE.Vector3();
 
-
+// ⚠️ ضع مصفوفة النقاط الخاصة بك (99 نقطة) هنا بالكامل
 const initialHotspotsData = [
   { id: 0, label: "Gate 1", pos: [0.617, 4.5, 533.24], type: "gate" },
-  { id: 1, label: "Gate 3", pos: [542.04, 4.5, -0.315], type: "gate" },
-  { id: 2, label: "Gate 4", pos: [2.698, 4.5, -543.82], type: "gate" },
-  { id: 3, label: "Gate 5", pos: [-387.31, 4.5, -379.75], type: "gate" },
-  { id: 4, label: "Gate 6", pos: [-534.51, 4.5, 0.93], type: "gate" },
-  { id: 5, label: "Gate 2", pos: [386.92, 4.5, 378.80], type: "gate" },
+  { id: 1, label: "Gate 2", pos: [386.92, 4.5, 378.80], type: "gate" },
+  { id: 2, label: "Gate 3", pos: [542.04, 4.5, -0.315], type: "gate" },
+  { id: 3, label: "Gate 4", pos: [2.698, 4.5, -543.82], type: "gate" },
+  { id: 4, label: "Gate 5", pos: [-387.31, 4.5, -379.75], type: "gate" },
+  { id: 5, label: "Gate 6", pos: [-534.51, 4.5, 0.93], type: "gate" },
   { id: 6, label: "VIP 1 Parking: 128", pos: [104.51, 4.5, 158.40], type: "parking" },
   { id: 7, label: "VIP 2 Parking: 130", pos: [-102.18, 4.5, 159.59], type: "parking" },
   { id: 8, label: "A1 Parking: 71", pos: [155.07, 4.5, 99.22], type: "parking" },
@@ -30,7 +30,7 @@ const initialHotspotsData = [
   { id: 17, label: "A2 Parking: 138", pos: [38.44, 4.5, -176.67], type: "parking" },
   { id: 18, label: "A2 Parking: 158", pos: [152.83, 4.5, -95.32], type: "parking" },
   { id: 19, label: "A2 Parking: 72", pos: [-150.94, 4.5, 96.63], type: "parking" },
-  { id: 20, label: "B1 Parking: 231", pos: [235.86, 4.5, 153.04], type: "parking" },
+  { id: 20, block: 1, label: "B1 Parking: 231", pos: [235.86, 4.5, 153.04], type: "parking" },
   { id: 21, label: "B1 Parking: 247", pos: [275.66, 4.5, -53.69], type: "parking" },
   { id: 22, label: "B1 Parking: 272", pos: [161.66, 4.5, -230.00], type: "parking" },
   { id: 23, label: "B1 Parking: 253", pos: [-53.80, 4.5, -278.26], type: "parking" },
@@ -53,7 +53,7 @@ const initialHotspotsData = [
   { id: 40, label: "C1 Parking: 882", pos: [-351.04, 4.5, -223.25], type: "parking" },
   { id: 41, label: "C2 Parking: 873", pos: [-408.37, 4.5, -80.02], type: "parking" },
   { id: 42, label: "C2 Parking: 734", pos: [-343.53, 4.5, 233.16], type: "parking" },
-  { id: 43, label: "Cancelled Parking area 787 MDLBeast", pos: [-406.48, 44.5, 90.64], type: "parking" },
+  { id: 43, label: "Cancelled Parking area 787 MDLBeast", pos: [-406.48, 44, 90.64], type: "parking" },
   { id: 44, label: "120 Handheld Ticket \nScanners By Zebra", pos: [0.68, 4.5, -222.66], type: "parking" },
   { id: 45, label: "Ticket Booth (VIP) 1", pos: [64.08, 4.5, 113.19], type: "gate" },
   { id: 46, label: "VIP Entrance 1", pos: [74.77, 4.5, 106.72], type: "gate" },
@@ -140,7 +140,7 @@ function StadiumModel({ onLoadComplete, onMeshClick, onMeshDblClick, onClearHove
         object={scene} 
         onClick={(e) => {
           e.stopPropagation();
-          onClearHover(); // إخفاء النص عند النقر في مكان فارغ
+          onClearHover(); // إخفاء النص عند النقر في مكان فارغ فقط
           if (e.nativeEvent.button === 0 && e.point) {
             onMeshClick(e.point);
           }
@@ -161,7 +161,7 @@ function StadiumModel({ onLoadComplete, onMeshClick, onMeshDblClick, onClearHove
 function OptimizedHotspots({ data, activeEditId, onRightClickSpot, tooltipRef, isOrbitingRef, isDragging, activeTooltipId, setActiveTooltipId }) {
   const hoverMeshRef = useRef(); 
   const hoveredIndexRef = useRef(null); 
-  const longPressTimer = useRef(null); // للضغط المطول في الجوال
+  const longPressTimer = useRef(null); 
   
   const { camera, size } = useThree(); 
 
@@ -188,7 +188,10 @@ function OptimizedHotspots({ data, activeEditId, onRightClickSpot, tooltipRef, i
   }, []);
 
   useFrame(() => {
-    if (!tooltipRef.current || isOrbitingRef.current || isDragging) {
+    if (!tooltipRef.current) return;
+    
+    // إخفاء النص فقط في حالة السحب للسلة (Drag)
+    if (isDragging) {
        if (tooltipRef.current.style.visibility !== 'hidden') {
           tooltipRef.current.style.opacity = '0';
           tooltipRef.current.style.visibility = 'hidden';
@@ -197,13 +200,20 @@ function OptimizedHotspots({ data, activeEditId, onRightClickSpot, tooltipRef, i
        return;
     }
 
-    // الأولوية للنقطة المحددة بالنقر (activeTooltipId) ثم التي يمر عليها الماوس (hoveredIndexRef)
     let targetSpot = null;
-    if (activeTooltipId !== null) {
-      targetSpot = data.find(s => s.id === activeTooltipId);
-    }
-    if (!targetSpot && hoveredIndexRef.current !== null) {
-      targetSpot = data[hoveredIndexRef.current];
+
+    // ✨ إذا الكاميرا تتحرك (دوران أو زوم): نبقي التوهج فقط للنقطة المحددة (المضغوط عليها)
+    if (isOrbitingRef.current) {
+      if (activeTooltipId !== null) {
+        targetSpot = data.find(s => s.id === activeTooltipId);
+      }
+    } else {
+      // إذا الكاميرا ثابتة: الأولوية للمرور ثم للمثبتة
+      if (hoveredIndexRef.current !== null) {
+        targetSpot = data[hoveredIndexRef.current];
+      } else if (activeTooltipId !== null) {
+        targetSpot = data.find(s => s.id === activeTooltipId);
+      }
     }
 
     if (targetSpot && targetSpot.id !== activeEditId) {
@@ -218,11 +228,9 @@ function OptimizedHotspots({ data, activeEditId, onRightClickSpot, tooltipRef, i
       camera.getWorldDirection(_camDir);
       _dirToSpot.copy(_spotPos).sub(camera.position).normalize();
 
-      // إظهار النص فقط إذا كانت النقطة في مجال الرؤية (أمام الكاميرا)
       if (_dirToSpot.dot(_camDir) > 0.25) {
         _vector.copy(_spotPos).project(camera);
         tooltipRef.current.style.left = `${(_vector.x * 0.5 + 0.5) * size.width}px`;
-        // رفع النص للأعلى أكثر عشان ما يتغطى باصبع المستخدم
         tooltipRef.current.style.top = `${(-_vector.y * 0.5 + 0.5) * size.height - 45}px`;
 
         if (tooltipRef.current.innerText !== targetSpot.label) {
@@ -253,7 +261,6 @@ function OptimizedHotspots({ data, activeEditId, onRightClickSpot, tooltipRef, i
         <pointsMaterial size={15} vertexColors map={dotTexture} transparent opacity={0.7} sizeAttenuation={false} depthWrite={false} />
       </points>
 
-      {/* الكرات الخفية مع دعم اللمس والضغط المطول */}
       <group>
         {data.map((spot, index) => (
           <mesh 
@@ -263,32 +270,35 @@ function OptimizedHotspots({ data, activeEditId, onRightClickSpot, tooltipRef, i
               e.stopPropagation();
               hoveredIndexRef.current = index;
             }}
-            onPointerLeave={() => {
+            onPointerLeave={(e) => {
+              e.stopPropagation();
               hoveredIndexRef.current = null;
               clearTimeout(longPressTimer.current);
             }}
-            onPointerUp={() => {
-              clearTimeout(longPressTimer.current); // إلغاء الضغط المطول إذا رفع اصبعه
+            onPointerUp={(e) => {
+              e.stopPropagation();
+              clearTimeout(longPressTimer.current); 
             }}
             onPointerDown={(e) => { 
               e.stopPropagation(); 
               
-              // التعديل بالكليك يمين (كمبيوتر)
               if (e.nativeEvent.button === 2) {
                 onRightClickSpot(spot); 
                 return;
               }
 
-              // تفعيل النص بالنقر (جوال وكمبيوتر)
+              // تفعيل النص والتوهج عند النقر (ستبقى متوهجة)
               setActiveTooltipId(spot.id);
 
-              // تشغيل مؤقت الضغط المطول للتعديل (جوال) نصف ثانية
               longPressTimer.current = setTimeout(() => {
                 onRightClickSpot(spot);
               }, 500); 
             }}
+            // ✨ الحل النهائي لمشكلة التعديل 1: حجب النقرة عن الملعب!
+            onClick={(e) => e.stopPropagation()} 
+            onDoubleClick={(e) => e.stopPropagation()}
           >
-            <sphereGeometry args={[5, 8, 8]} />
+            <sphereGeometry args={[8, 8, 8]} />
             <meshBasicMaterial visible={false} />
           </mesh>
         ))}
@@ -312,15 +322,32 @@ export default function App() {
     }));
   });
 
+  const [history, setHistory] = useState([]);
+  
+  const saveToHistory = (currentState) => {
+    setHistory(prev => {
+      const newHistory = [...prev, currentState];
+      return newHistory.slice(-20); 
+    });
+  };
+
+  const handleUndo = () => {
+    if (history.length === 0) return;
+    const prevState = history[history.length - 1];
+    setHotspots(prevState);
+    setHistory(prev => prev.slice(0, -1));
+    setCopyFeedback("Undo successful!");
+    setTimeout(() => setCopyFeedback(""), 2000);
+  };
+
   const [filter, setFilter] = useState("all");
   const [isLoading, setIsLoading] = useState(true);
   const [copyFeedback, setCopyFeedback] = useState(""); 
   
-  // ✨ حالات القائمة الجانبية (للقوائم المنسدلة والجوال)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isGatesOpen, setIsGatesOpen] = useState(false);
   const [isParkingOpen, setIsParkingOpen] = useState(false);
-  const [activeTooltipId, setActiveTooltipId] = useState(null); // النقطة المختارة حالياً
+  const [activeTooltipId, setActiveTooltipId] = useState(null); 
 
   const tooltipRef = useRef(null); 
   const editMeshRef = useRef(null); 
@@ -330,7 +357,7 @@ export default function App() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editSpotLabel, setEditSpotLabel] = useState("");
   const [editSpotType, setEditSpotType] = useState("gate");
-  const [backupPos, setBackupPos] = useState(null); 
+  const backupHotspotsRef = useRef(null); 
   
   const [isDragging, setIsDragging] = useState(false);
 
@@ -407,6 +434,7 @@ export default function App() {
 
   const handleSaveNewSpot = () => {
     if (!newSpotLabel.trim()) return;
+    saveToHistory(hotspots); 
     const newSpot = { id: Date.now(), label: newSpotLabel, pos: newSpotPos, type: newSpotType };
     setHotspots(prev => [...prev, newSpot]);
     setShowAddModal(false);
@@ -414,15 +442,19 @@ export default function App() {
 
   const handleRightClickSpot = (spot) => {
     clearHoverEffect();
+    backupHotspotsRef.current = [...hotspots]; 
     setActiveEditId(spot.id);
     setEditSpotLabel(spot.label);
     setEditSpotType(spot.type);
-    setBackupPos([...spot.pos]); 
     setShowEditModal(true);
-    setIsMobileMenuOpen(false); // إغلاق المنيو تلقائياً في الجوال
+    setIsMobileMenuOpen(false); 
   };
 
   const handleSaveEditSpot = () => {
+    if (backupHotspotsRef.current) {
+      saveToHistory(backupHotspotsRef.current);
+      backupHotspotsRef.current = null;
+    }
     setHotspots(prev => prev.map(spot => {
       if (spot.id === activeEditId) {
         return { ...spot, label: editSpotLabel, type: editSpotType };
@@ -434,19 +466,19 @@ export default function App() {
   };
 
   const handleCancelEditSpot = () => {
-    if (backupPos && activeEditId !== null) {
-      setHotspots(prev => prev.map(spot => {
-        if (spot.id === activeEditId) {
-          return { ...spot, pos: backupPos };
-        }
-        return spot;
-      }));
+    if (backupHotspotsRef.current && activeEditId !== null) {
+      setHotspots(backupHotspotsRef.current); 
+      backupHotspotsRef.current = null;
     }
     setActiveEditId(null);
     setShowEditModal(false);
   };
 
   const handleDeleteSpot = () => {
+    if (backupHotspotsRef.current) {
+      saveToHistory(backupHotspotsRef.current);
+      backupHotspotsRef.current = null;
+    }
     setHotspots(prev => prev.filter(spot => spot.id !== activeEditId));
     setActiveEditId(null);
     setShowEditModal(false);
@@ -454,6 +486,7 @@ export default function App() {
 
   const handleResetToDefault = () => {
     if (window.confirm("Are you sure you want to restore defaults?")) {
+      saveToHistory(hotspots);
       localStorage.removeItem("stadium_r3f_hotspots");
       setHotspots(initialHotspotsData);
       setActiveEditId(null);
@@ -467,6 +500,16 @@ export default function App() {
     ).join(",\n") + "\n];";
     navigator.clipboard.writeText(formattedArray);
     setCopyFeedback("Copied All!");
+    setTimeout(() => setCopyFeedback(""), 2000);
+  };
+
+  const handleCopySelectedSpot = () => {
+    if (activeTooltipId === null) return;
+    const spot = hotspots.find(h => h.id === activeTooltipId);
+    if (!spot) return;
+    const str = `{ id: ${spot.id}, label: ${JSON.stringify(spot.label)}, pos: [${spot.pos.join(', ')}], type: "${spot.type}" }`;
+    navigator.clipboard.writeText(str);
+    setCopyFeedback("Spot Copied!");
     setTimeout(() => setCopyFeedback(""), 2000);
   };
 
@@ -488,7 +531,6 @@ export default function App() {
         </div>
       )}
 
-      {/* زر الهامبرجر يظهر فقط في الجوال */}
       <button className="hamburger-menu" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
         {isMobileMenuOpen ? '✖' : '☰'}
       </button>
@@ -496,7 +538,6 @@ export default function App() {
       <div className={`sidebar-controls ${isMobileMenuOpen ? 'open' : ''}`}>
         <button className={`side-btn ${filter === 'all' ? 'active' : ''}`} onClick={() => { setFilter("all"); setIsMobileMenuOpen(false); }}>All Hotspots</button>
         
-        {/* قائمة Gates المنسدلة */}
         <div className="accordion-container">
           <div className="accordion-header">
             <button className={`side-btn ${filter === 'gates' ? 'active' : ''}`} onClick={() => { setFilter("gates"); setIsGatesOpen(true); setIsParkingOpen(false); }}>Gates & Stadium</button>
@@ -514,7 +555,6 @@ export default function App() {
           )}
         </div>
 
-        {/* قائمة Parking المنسدلة */}
         <div className="accordion-container">
           <div className="accordion-header">
             <button className={`side-btn ${filter === 'parking' ? 'active' : ''}`} onClick={() => { setFilter("parking"); setIsParkingOpen(true); setIsGatesOpen(false); }}>Parking Areas</button>
@@ -532,15 +572,46 @@ export default function App() {
           )}
         </div>
 
-        <button className="side-btn btn-copy-all" onClick={handleCopyAllData}>📋 Copy All Data</button>
-        <button className="side-btn btn-reset" onClick={handleResetToDefault}>Reset Layout</button>
-        {copyFeedback === "Copied All!" && <span className="copy-feedback">✓ All Data Copied</span>}
+        <div className="accordion-header" style={{ marginTop: '10px' }}>
+          <button className="side-btn btn-copy-all" onClick={handleCopyAllData}>📋 Copy All</button>
+          <button 
+            className="accordion-toggle" 
+            style={{ 
+              backgroundColor: activeTooltipId === null ? 'rgba(255,255,255,0.1)' : '#17a2b8',
+              borderColor: activeTooltipId === null ? 'transparent' : 'white',
+              cursor: activeTooltipId === null ? 'not-allowed' : 'pointer'
+            }} 
+            onClick={handleCopySelectedSpot}
+            disabled={activeTooltipId === null}
+            title="Copy Selected Spot"
+          >
+            📄
+          </button>
+        </div>
+
+        <div className="accordion-header" style={{ marginTop: '10px' }}>
+          <button className="side-btn btn-reset" onClick={handleResetToDefault}>Reset Layout</button>
+          <button 
+            className="accordion-toggle" 
+            style={{ 
+              backgroundColor: history.length === 0 ? 'rgba(255,255,255,0.1)' : '#ff9800',
+              borderColor: history.length === 0 ? 'transparent' : 'white',
+              cursor: history.length === 0 ? 'not-allowed' : 'pointer'
+            }} 
+            onClick={handleUndo}
+            disabled={history.length === 0}
+            title="Undo Last Action"
+          >
+            ↩️
+          </button>
+        </div>
+        
+        {copyFeedback && <span className="copy-feedback">{copyFeedback}</span>}
       </div>
 
       <div ref={tooltipRef} className="hotspot-tooltip" />
 
       <div className="right-panel">
-        {/* المودال ونوافذ التعديل باقية كما هي */}
         {showAddModal && (
           <div className="modal-card modal-add">
             <h3 className="modal-title text-blue">Add New Hotspot 📍</h3>
@@ -610,7 +681,10 @@ export default function App() {
             return (
               <DragControls
                 key={activeEditId} 
-                onDragStart={() => setIsDragging(true)}
+                onDragStart={() => {
+                  saveToHistory(hotspots);
+                  setIsDragging(true);
+                }}
                 onDragEnd={() => {
                   if (editMeshRef.current) {
                     const finalGlobalPos = new THREE.Vector3();
@@ -660,7 +734,6 @@ export default function App() {
           onStart={() => { 
             isOrbitingRef.current = true; 
             clearTimeout(orbitTimeoutRef.current);
-            clearHoverEffect(); // إخفاء النص عند السحب لتحسين الأداء
           }}
           onChange={() => { 
             isOrbitingRef.current = true; 
