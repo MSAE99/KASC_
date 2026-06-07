@@ -134,7 +134,7 @@ const getCategory = (spot) => {
 };
 
 function StadiumModel({ onLoadComplete, onMeshClick, onMeshDblClick, onClearHover }) {
-  const { scene } = useGLTF("/045_King_Abdullah_Stadium-v2.glb");
+  const { scene } = useGLTF("/045_King_Abdullah_Stadium-v1.glb");
 
   useEffect(() => {
     if (scene) {
@@ -860,7 +860,7 @@ export default function App() {
         onCreated={({ scene, gl }) => {
           scene.background = new THREE.Color('#18181c');
           gl.toneMapping = THREE.LinearToneMapping;
-          gl.toneMappingExposure = 2;
+          gl.toneMappingExposure = 8;
         }}
       >
         <ambientLight intensity={0.7} />
