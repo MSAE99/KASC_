@@ -115,7 +115,7 @@ const initialHotspotsData = [
 // أداة التصنيف الذكية
 const getCategory = (spot) => {
   const label = spot.label.toLowerCase();
-  
+
   if (spot.type === 'parking') {
     if (label.startsWith('vip')) return { main: 'Gates & Parking Areas', sub: 'VIP Parking' };
     if (label.startsWith('a1') || label.startsWith('a2')) return { main: 'Gates & Parking Areas', sub: 'Parking A' };
@@ -197,14 +197,14 @@ function OptimizedHotspots({ data, activeEditId, onRightClickSpot, tooltipRef, i
       posArray[i * 3 + 2] = spot.pos[2];
 
       if (spot.type === 'parking') {
-        tempColor.set('#007bff'); 
+        tempColor.set('#007bff');
       } else {
-        tempColor.set('#052272'); 
+        tempColor.set('#052272');
       }
 
-      colorArray[i * 3] = tempColor.r;       
-      colorArray[i * 3 + 1] = tempColor.g;   
-      colorArray[i * 3 + 2] = tempColor.b;   
+      colorArray[i * 3] = tempColor.r;
+      colorArray[i * 3 + 1] = tempColor.g;
+      colorArray[i * 3 + 2] = tempColor.b;
     });
 
     return [posArray, colorArray];
@@ -249,7 +249,7 @@ function OptimizedHotspots({ data, activeEditId, onRightClickSpot, tooltipRef, i
 
       if (hoverMeshRef.current) {
         hoverMeshRef.current.position.copy(_spotPos);
-        if(targetSpot.type === 'parking' ){
+        if (targetSpot.type === 'parking') {
           hoverMeshRef.current.material.color.setHex(0x007bff);
         } else {
           hoverMeshRef.current.material.color.setHex(0x052272);
@@ -374,14 +374,14 @@ export default function App() {
 
   // ✨ حالات التوسيع والطي للأسهم (تسمح بفتح أكثر من قائمة معاً)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isAllMenuExpanded, setIsAllMenuExpanded] = useState(true); 
-  const [expandedMainCats, setExpandedMainCats] = useState([]); 
-  const [expandedSubCats, setExpandedSubCats] = useState([]); 
+  const [isAllMenuExpanded, setIsAllMenuExpanded] = useState(true);
+  const [expandedMainCats, setExpandedMainCats] = useState([]);
+  const [expandedSubCats, setExpandedSubCats] = useState([]);
 
   // ✨ حالات الفلترة والتحديد (متعددة الخيارات)
-  const [isAllSpotsVisible, setIsAllSpotsVisible] = useState(true); 
-  const [activeFilters, setActiveFilters] = useState({}); 
-  
+  const [isAllSpotsVisible, setIsAllSpotsVisible] = useState(true);
+  const [activeFilters, setActiveFilters] = useState({});
+
   const [activeTooltipId, setActiveTooltipId] = useState(null);
 
   const tooltipRef = useRef(null);
@@ -417,9 +417,9 @@ export default function App() {
   const handleSpotSelect = (spot) => {
     setActiveTooltipId(spot.id);
     const cat = getCategory(spot);
-    
+
     setIsAllSpotsVisible(true);
-    
+
     // فتح القوائم الجانبية ليتمكن من رؤية زر التعديل
     setIsAllMenuExpanded(true);
     setExpandedMainCats(prev => prev.includes(cat.main) ? prev : [...prev, cat.main]);
@@ -429,13 +429,43 @@ export default function App() {
   };
 
   const groupedHotspots = useMemo(() => {
-    const groups = { 'Stadium': {}, 'Gates & Parking Areas': {} };
+    // 1. هنا نضع الترتيب الذي نريده بالضبط للأقسام الفرعية!
+    const groups = {
+      'Stadium': {
+        'Gates': [],
+        'eGates': [],
+        'Entrances': [],
+        'Ticket Booths': [],
+        'Levels (LVL)': [],
+        'POS (Points of Sale)': [],
+        'Stadium Info': []
+      },
+      'Gates & Parking Areas': {
+        'VIP Parking': [],
+        'Parking A': [],
+        'Parking B': [],
+        'Parking C': [],
+        'Gates': []
+      }
+    };
+
+    // 2. توزيع النقاط على الأقسام
     hotspots.forEach(spot => {
       const { main, sub } = getCategory(spot);
       if (!groups[main]) groups[main] = {};
       if (!groups[main][sub]) groups[main][sub] = [];
       groups[main][sub].push(spot);
     });
+
+    // 3. تنظيف الأقسام الفارغة (لكي لا يظهر قسم فارغ إذا لم تكن فيه نقاط)
+    Object.keys(groups).forEach(main => {
+      Object.keys(groups[main]).forEach(sub => {
+        if (groups[main][sub].length === 0) {
+          delete groups[main][sub];
+        }
+      });
+    });
+
     return groups;
   }, [hotspots]);
 
@@ -446,16 +476,16 @@ export default function App() {
 
     return hotspots.filter(s => {
       const cat = getCategory(s);
-      
+
       // هل القسم الرئيسي لهذه النقطة ضمن الفلاتر؟
       if (!activeFilters[cat.main]) return false;
-      
+
       // إذا كان القسم الرئيسي بالكامل محدد ('ALL')
       if (activeFilters[cat.main] === 'ALL') return true;
-      
+
       // إذا كانت أقسام فرعية محددة
       return Array.isArray(activeFilters[cat.main]) && activeFilters[cat.main].includes(cat.sub);
-    }); 
+    });
   }, [hotspots, isAllSpotsVisible, activeFilters]);
 
   useEffect(() => {
@@ -616,27 +646,27 @@ export default function App() {
       </button>
 
       <div className={`sidebar-controls ${isMobileMenuOpen ? 'open' : ''}`}>
-        
+
         <div className="accordion-container">
           <div className="accordion-header">
             {/* ✨ زر All Hotspots الذكي */}
-            <button 
-              className={`side-btn ${isAllSpotsVisible && Object.keys(activeFilters).length === 0 ? 'active' : ''}`} 
+            <button
+              className={`side-btn ${isAllSpotsVisible && Object.keys(activeFilters).length === 0 ? 'active' : ''}`}
               onClick={() => {
                 if (!isAllSpotsVisible) {
-                   setIsAllSpotsVisible(true);
-                   setActiveFilters({});
+                  setIsAllSpotsVisible(true);
+                  setActiveFilters({});
                 } else if (Object.keys(activeFilters).length > 0) {
-                   setActiveFilters({});
+                  setActiveFilters({});
                 } else {
-                   setIsAllSpotsVisible(false);
+                  setIsAllSpotsVisible(false);
                 }
               }}
             >
               All Hotspots
             </button>
-            <button 
-              className={`accordion-toggle ${isAllMenuExpanded ? 'active' : ''}`} 
+            <button
+              className={`accordion-toggle ${isAllMenuExpanded ? 'active' : ''}`}
               onClick={() => setIsAllMenuExpanded(!isAllMenuExpanded)}
             >
               {isAllMenuExpanded ? '▲' : '▼'}
@@ -645,32 +675,32 @@ export default function App() {
 
           {isAllMenuExpanded && (
             <div className="accordion-list main-cat-list">
-              
+
               {/* التصنيفات الأساسية */}
               {Object.keys(groupedHotspots).map(mainCat => (
                 <div key={mainCat} className="accordion-container nested">
                   <div className="accordion-header">
                     {/* زر التصنيف الرئيسي للفلترة */}
-                    <button 
-                      className={`side-btn sub-btn ${activeFilters[mainCat] === 'ALL' ? 'active' : ''}`} 
+                    <button
+                      className={`side-btn sub-btn ${activeFilters[mainCat] === 'ALL' ? 'active' : ''}`}
                       onClick={() => {
                         setIsAllSpotsVisible(true);
                         setActiveFilters(prev => {
-                           const newFilters = { ...prev };
-                           if (newFilters[mainCat] === 'ALL') {
-                               delete newFilters[mainCat]; // إلغاء تحديد
-                           } else {
-                               newFilters[mainCat] = 'ALL'; // تحديد الكل وتجاهل الأقسام الفرعية داخله
-                           }
-                           return newFilters;
+                          const newFilters = { ...prev };
+                          if (newFilters[mainCat] === 'ALL') {
+                            delete newFilters[mainCat]; // إلغاء تحديد
+                          } else {
+                            newFilters[mainCat] = 'ALL'; // تحديد الكل وتجاهل الأقسام الفرعية داخله
+                          }
+                          return newFilters;
                         });
                       }}
                     >
                       {mainCat}
                     </button>
                     {/* زر السهم لفتح القائمة فقط */}
-                    <button 
-                      className={`accordion-toggle ${expandedMainCats.includes(mainCat) ? 'active' : ''}`} 
+                    <button
+                      className={`accordion-toggle ${expandedMainCats.includes(mainCat) ? 'active' : ''}`}
                       onClick={() => setExpandedMainCats(prev => prev.includes(mainCat) ? prev.filter(c => c !== mainCat) : [...prev, mainCat])}
                     >
                       {expandedMainCats.includes(mainCat) ? '▲' : '▼'}
@@ -684,33 +714,33 @@ export default function App() {
                         <div key={subCat} className="accordion-container nested-sub">
                           <div className="accordion-header">
                             {/* زر القسم الفرعي للفلترة */}
-                            <button 
-                              className={`side-btn sub-sub-btn ${Array.isArray(activeFilters[mainCat]) && activeFilters[mainCat].includes(subCat) ? 'active' : ''}`} 
+                            <button
+                              className={`side-btn sub-sub-btn ${Array.isArray(activeFilters[mainCat]) && activeFilters[mainCat].includes(subCat) ? 'active' : ''}`}
                               onClick={() => {
                                 setIsAllSpotsVisible(true);
                                 setActiveFilters(prev => {
-                                    const newFilters = { ...prev };
-                                    if (newFilters[mainCat] === 'ALL') {
-                                        newFilters[mainCat] = [subCat];
-                                    } else if (Array.isArray(newFilters[mainCat])) {
-                                        if (newFilters[mainCat].includes(subCat)) {
-                                            newFilters[mainCat] = newFilters[mainCat].filter(s => s !== subCat);
-                                            if (newFilters[mainCat].length === 0) delete newFilters[mainCat];
-                                        } else {
-                                            newFilters[mainCat] = [...newFilters[mainCat], subCat];
-                                        }
+                                  const newFilters = { ...prev };
+                                  if (newFilters[mainCat] === 'ALL') {
+                                    newFilters[mainCat] = [subCat];
+                                  } else if (Array.isArray(newFilters[mainCat])) {
+                                    if (newFilters[mainCat].includes(subCat)) {
+                                      newFilters[mainCat] = newFilters[mainCat].filter(s => s !== subCat);
+                                      if (newFilters[mainCat].length === 0) delete newFilters[mainCat];
                                     } else {
-                                        newFilters[mainCat] = [subCat];
+                                      newFilters[mainCat] = [...newFilters[mainCat], subCat];
                                     }
-                                    return newFilters;
+                                  } else {
+                                    newFilters[mainCat] = [subCat];
+                                  }
+                                  return newFilters;
                                 });
                               }}
                             >
                               {subCat}
                             </button>
                             {/* زر السهم للقسم الفرعي */}
-                            <button 
-                              className={`accordion-toggle sub-toggle ${expandedSubCats.includes(subCat) ? 'active' : ''}`} 
+                            <button
+                              className={`accordion-toggle sub-toggle ${expandedSubCats.includes(subCat) ? 'active' : ''}`}
                               onClick={() => setExpandedSubCats(prev => prev.includes(subCat) ? prev.filter(c => c !== subCat) : [...prev, subCat])}
                             >
                               {expandedSubCats.includes(subCat) ? '▲' : '▼'}
@@ -721,9 +751,9 @@ export default function App() {
                           {expandedSubCats.includes(subCat) && (
                             <div className="accordion-list items-list">
                               {groupedHotspots[mainCat][subCat].map(spot => (
-                                <div 
-                                  key={spot.id} 
-                                  className={`list-item ${activeTooltipId === spot.id ? 'active' : ''}`} 
+                                <div
+                                  key={spot.id}
+                                  className={`list-item ${activeTooltipId === spot.id ? 'active' : ''}`}
                                   onClick={() => handleSpotSelect(spot)}
                                 >
                                   <span>{spot.label.split('\n')[0]}</span>
@@ -809,7 +839,7 @@ export default function App() {
             <textarea rows="4" value={editSpotLabel} onChange={(e) => setEditSpotLabel(e.target.value)} className="modal-input" />
             <label className="modal-label mt-10">Change Category:</label>
             <select value={editSpotType} onChange={(e) => setEditSpotType(e.target.value)} className="modal-input">
-              <option value="gate">Gate / Interior Asset</option>
+              <option value="gate">Stadium</option>
               <option value="parking">Parking Slot</option>
             </select>
             <div className="modal-actions space-between">
