@@ -35,7 +35,7 @@ body {
   width: 40px;
   height: 40px;
   border: 4px solid #333;
-  border-top-color: #0077ff;
+  border-top-color: #ababac;
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -54,7 +54,17 @@ body {
   flex-direction: column;
   gap: 10px;
   max-width: 340px;
+  
+  /* ✨ الحل: تحديد أقصى ارتفاع وتفعيل السكرول ✨ */
+  max-height: calc(100vh - 40px); /* يطرح 40 بكسل من طول الشاشة عشان ما يلمس الحواف */
+  overflow-y: auto; 
+  padding-right: 5px; /* مسافة بسيطة عشان السكرول ما يغطي على الأزرار */
 }
+
+/* ✨ تجميل شكل السكرول بار للقائمة الجانبية ✨ */
+.sidebar-controls::-webkit-scrollbar { width: 5px; }
+.sidebar-controls::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); border-radius: 4px; }
+.sidebar-controls::-webkit-scrollbar-thumb { background: #007bff; border-radius: 4px; }
 
 .side-btn {
   background: rgba(0, 0, 0, 0.85);
@@ -130,6 +140,7 @@ body {
   overflow-y: visible !important;
   gap: 10px !important;
   margin-top: 5px;
+  
 }
 
 /* أزرار الأقسام (Stadium / Parking) */
@@ -172,7 +183,7 @@ body {
 /* قائمة النقاط النهائية (العناصر التي بداخلها Edit) */
 .items-list {
   background: rgba(0,0,0,0.8) !important;
-  max-height: 220px !important;
+  max-height: 500px !important;
   border: none !important;
   border-left: 2px solid #17a2b8 !important;
   border-radius: 0 8px 8px 0 !important;
