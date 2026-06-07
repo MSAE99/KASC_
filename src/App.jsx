@@ -1,3 +1,5 @@
+import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
+import { auth } from "./firebase";
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, useGLTF, DragControls, Bvh } from '@react-three/drei';
@@ -8,7 +10,7 @@ const _dirToSpot = new THREE.Vector3();
 const _camDir = new THREE.Vector3();
 const _vector = new THREE.Vector3();
 
-// مصفوفة النقاط الخاصة بك
+// مصفوفة النقاط الـ 99 الخاصة بك
 const initialHotspotsData = [
   { id: 0, label: "Gate 1", pos: [0.617, 4.5, 533.24], type: "parking" },
   { id: 1, label: "Gate 2", pos: [386.92, 4.5, 378.80], type: "parking" },
@@ -34,7 +36,7 @@ const initialHotspotsData = [
   { id: 21, label: "B1 Parking: 247", pos: [275.66, 4.5, -53.69], type: "parking" },
   { id: 22, label: "B1 Parking: 272", pos: [161.66, 4.5, -230.00], type: "parking" },
   { id: 23, label: "B1 Parking: 253", pos: [-53.80, 4.5, -278.26], type: "parking" },
-  { id: 24, label: "B1 Parking: 40", pos: [-236.51, 4.5, -155.47], type: "parking" },
+  { id: 24, block: 1, label: "B1 Parking: 40", pos: [-236.51, 4.5, -155.47], type: "parking" },
   { id: 25, label: "B1 Parking: 215", pos: [-275.39, 4.5, 53.65], type: "parking" },
   { id: 26, label: "B2 Parking: 234", pos: [278.04, 4.5, 49.75], type: "parking" },
   { id: 27, label: "B2 Parking: 42", pos: [235.07, 4.5, -156.36], type: "parking" },
@@ -53,7 +55,7 @@ const initialHotspotsData = [
   { id: 40, label: "C1 Parking: 882", pos: [-351.04, 4.5, -223.25], type: "parking" },
   { id: 41, label: "C2 Parking: 873", pos: [-408.37, 4.5, -80.02], type: "parking" },
   { id: 42, label: "C2 Parking: 734", pos: [-343.53, 4.5, 233.16], type: "parking" },
-  { id: 43, label: "Cancelled Parking area 787 MDLBeast", pos: [-406.48, 44, 90.64], type: "parking" },
+  { id: 43, label: "Cancelled Parking area 787 MDLBeast", pos: [-406.48, 4.5, 90.64], type: "parking" },
   { id: 44, label: "120 Handheld Ticket \nScanners By Zebra", pos: [0.68, 4.5, -222.66], type: "parking" },
   { id: 45, label: "Ticket Booth (VIP) 1", pos: [64.08, 4.5, 113.19], type: "gate" },
   { id: 46, label: "VIP Entrance 1", pos: [74.77, 4.5, 106.72], type: "gate" },
@@ -112,10 +114,8 @@ const initialHotspotsData = [
   { id: 99, label: "POS 6\n38.71 m2\n2 Shutter", pos: [110.19, 29.73, 27.31], type: "gate" }
 ];
 
-// أداة التصنيف الذكية
 const getCategory = (spot) => {
   const label = spot.label.toLowerCase();
-
   if (spot.type === 'parking') {
     if (label.startsWith('vip')) return { main: 'Gates & Parking Areas', sub: 'VIP Parking' };
     if (label.startsWith('a1') || label.startsWith('a2')) return { main: 'Gates & Parking Areas', sub: 'Parking A' };
@@ -133,7 +133,7 @@ const getCategory = (spot) => {
   }
 };
 
-function StadiumModel({ onLoadComplete, onMeshClick, onMeshDblClick, onClearHover }) {
+function StadiumModel({ onLoadComplete, onMeshClick, onMeshDblClick, onClearHover, isLoggedIn }) {
   const { scene } = useGLTF("/045_King_Abdullah_Stadium-v2.glb");
 
   useEffect(() => {
@@ -168,7 +168,8 @@ function StadiumModel({ onLoadComplete, onMeshClick, onMeshDblClick, onClearHove
         }}
         onDoubleClick={(e) => {
           e.stopPropagation();
-          if (e.nativeEvent.button === 0 && e.point) {
+          // ✨ حماية 3D: لا يمكن إضافة نقطة إلا إذا كان مسجلاً دخول
+          if (isLoggedIn && e.nativeEvent.button === 0 && e.point) {
             onMeshDblClick(e.point);
           }
         }}
@@ -179,11 +180,10 @@ function StadiumModel({ onLoadComplete, onMeshClick, onMeshDblClick, onClearHove
   );
 }
 
-function OptimizedHotspots({ data, activeEditId, onRightClickSpot, tooltipRef, isOrbitingRef, isDragging, activeTooltipId, onSpotSelect }) {
+function OptimizedHotspots({ data, activeEditId, onRightClickSpot, tooltipRef, isOrbitingRef, isDragging, activeTooltipId, onSpotSelect, isLoggedIn }) {
   const hoverMeshRef = useRef();
   const hoveredIndexRef = useRef(null);
   const longPressTimer = useRef(null);
-
   const { camera, size } = useThree();
 
   const [positions, colors] = useMemo(() => {
@@ -195,18 +195,15 @@ function OptimizedHotspots({ data, activeEditId, onRightClickSpot, tooltipRef, i
       posArray[i * 3] = spot.pos[0];
       posArray[i * 3 + 1] = spot.pos[1];
       posArray[i * 3 + 2] = spot.pos[2];
-
       if (spot.type === 'parking') {
         tempColor.set('#007bff');
       } else {
         tempColor.set('#052272');
       }
-
       colorArray[i * 3] = tempColor.r;
       colorArray[i * 3 + 1] = tempColor.g;
       colorArray[i * 3 + 2] = tempColor.b;
     });
-
     return [posArray, colorArray];
   }, [data]);
 
@@ -220,7 +217,6 @@ function OptimizedHotspots({ data, activeEditId, onRightClickSpot, tooltipRef, i
 
   useFrame(() => {
     if (!tooltipRef.current) return;
-
     if (isDragging) {
       if (tooltipRef.current.style.visibility !== 'hidden') {
         tooltipRef.current.style.opacity = '0';
@@ -231,7 +227,6 @@ function OptimizedHotspots({ data, activeEditId, onRightClickSpot, tooltipRef, i
     }
 
     let targetSpot = null;
-
     if (isOrbitingRef.current) {
       if (activeTooltipId !== null) {
         targetSpot = data.find(s => s.id === activeTooltipId);
@@ -246,17 +241,11 @@ function OptimizedHotspots({ data, activeEditId, onRightClickSpot, tooltipRef, i
 
     if (targetSpot && targetSpot.id !== activeEditId) {
       _spotPos.set(targetSpot.pos[0], targetSpot.pos[1], targetSpot.pos[2]);
-
       if (hoverMeshRef.current) {
         hoverMeshRef.current.position.copy(_spotPos);
-        if (targetSpot.type === 'parking') {
-          hoverMeshRef.current.material.color.setHex(0x007bff);
-        } else {
-          hoverMeshRef.current.material.color.setHex(0x052272);
-        }
+        hoverMeshRef.current.material.color.setHex(targetSpot.type === 'parking' ? 0x007bff : 0x052272);
         hoverMeshRef.current.visible = true;
       }
-
       camera.getWorldDirection(_camDir);
       _dirToSpot.copy(_spotPos).sub(camera.position).normalize();
 
@@ -264,7 +253,6 @@ function OptimizedHotspots({ data, activeEditId, onRightClickSpot, tooltipRef, i
         _vector.copy(_spotPos).project(camera);
         tooltipRef.current.style.left = `${(_vector.x * 0.5 + 0.5) * size.width}px`;
         tooltipRef.current.style.top = `${(-_vector.y * 0.5 + 0.5) * size.height - 45}px`;
-
         if (tooltipRef.current.innerText !== targetSpot.label) {
           tooltipRef.current.innerText = targetSpot.label;
         }
@@ -298,32 +286,26 @@ function OptimizedHotspots({ data, activeEditId, onRightClickSpot, tooltipRef, i
           <mesh
             key={spot.id}
             position={spot.pos}
-            onPointerEnter={(e) => {
-              e.stopPropagation();
-              hoveredIndexRef.current = index;
-            }}
-            onPointerLeave={(e) => {
-              e.stopPropagation();
-              hoveredIndexRef.current = null;
-              clearTimeout(longPressTimer.current);
-            }}
-            onPointerUp={(e) => {
-              e.stopPropagation();
-              clearTimeout(longPressTimer.current);
-            }}
+            onPointerEnter={(e) => { e.stopPropagation(); hoveredIndexRef.current = index; }}
+            onPointerLeave={(e) => { e.stopPropagation(); hoveredIndexRef.current = null; clearTimeout(longPressTimer.current); }}
+            onPointerUp={(e) => { e.stopPropagation(); clearTimeout(longPressTimer.current); }}
             onPointerDown={(e) => {
               e.stopPropagation();
 
+              // ✨ حماية: فتح نافذة التعديل بالكليك اليمين متاحة فقط إذا سجل دخول
               if (e.nativeEvent.button === 2) {
-                onRightClickSpot(spot);
+                if (isLoggedIn) onRightClickSpot(spot);
                 return;
               }
 
               onSpotSelect(spot);
 
-              longPressTimer.current = setTimeout(() => {
-                onRightClickSpot(spot);
-              }, 500);
+              // ✨ حماية اللمس المطول للجوال
+              if (isLoggedIn) {
+                longPressTimer.current = setTimeout(() => {
+                  onRightClickSpot(spot);
+                }, 500);
+              }
             }}
             onClick={(e) => e.stopPropagation()}
             onDoubleClick={(e) => e.stopPropagation()}
@@ -343,6 +325,41 @@ function OptimizedHotspots({ data, activeEditId, onRightClickSpot, tooltipRef, i
 }
 
 export default function App() {
+  // 🔐 إضافة متغير حالة لتسجيل الدخول الفوري (false يعني زائر عادي)
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [showLoginModal, setShowLoginModal] = useState(false);
+
+  // ✨ إضافة مراقب للهوية (يتأكد إذا كنت مسجل دخول سابقاً أم لا)
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setIsLoggedIn(true); // إذا الـ Token صحيح، افتح لوحة التحكم
+      } else {
+        setIsLoggedIn(false); // إذا تم تسجيل الخروج، ارجع لوضع الزائر
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // ✨ دالة تسجيل الدخول الحقيقية
+  const handleLogin = async () => {
+    try {
+      await signInWithEmailAndPassword(auth, loginEmail, loginPassword);
+      setShowLoginModal(false);
+      setCopyFeedback("Login Successful! Welcome Admin.");
+    } catch (error) {
+      alert("Wrong Email or Password!"); // يمنع الدخول إذا كان خطأ
+    }
+  };
+
+  // ✨ دالة تسجيل الخروج الحقيقية
+  const handleLogout = async () => {
+    await signOut(auth);
+    resetToAllHotspots();
+  };
+
   const [hotspots, setHotspots] = useState(() => {
     const saved = localStorage.getItem("stadium_r3f_hotspots");
     const data = saved ? JSON.parse(saved) : initialHotspotsData;
@@ -372,16 +389,13 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [copyFeedback, setCopyFeedback] = useState("");
 
-  // ✨ حالات التوسيع والطي للأسهم (تسمح بفتح أكثر من قائمة معاً)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAllMenuExpanded, setIsAllMenuExpanded] = useState(true);
   const [expandedMainCats, setExpandedMainCats] = useState([]);
   const [expandedSubCats, setExpandedSubCats] = useState([]);
 
-  // ✨ حالات الفلترة والتحديد (متعددة الخيارات)
   const [isAllSpotsVisible, setIsAllSpotsVisible] = useState(true);
   const [activeFilters, setActiveFilters] = useState({});
-
   const [activeTooltipId, setActiveTooltipId] = useState(null);
 
   const tooltipRef = useRef(null);
@@ -403,7 +417,6 @@ export default function App() {
 
   const isOrbitingRef = useRef(false);
 
-  // إرجاع واجهة الفلتر لحالة عرض الكل
   const resetToAllHotspots = () => {
     setIsAllSpotsVisible(true);
     setActiveFilters({});
@@ -413,88 +426,45 @@ export default function App() {
     setActiveTooltipId(null);
   };
 
-  // عند النقر على نقطة في الملعب
   const handleSpotSelect = (spot) => {
     setActiveTooltipId(spot.id);
     const cat = getCategory(spot);
-
     setIsAllSpotsVisible(true);
-
-    // فتح القوائم الجانبية ليتمكن من رؤية زر التعديل
     setIsAllMenuExpanded(true);
     setExpandedMainCats(prev => prev.includes(cat.main) ? prev : [...prev, cat.main]);
     setExpandedSubCats(prev => prev.includes(cat.sub) ? prev : [...prev, cat.sub]);
-
     if (window.innerWidth <= 768) setIsMobileMenuOpen(false);
   };
 
   const groupedHotspots = useMemo(() => {
-    // 1. هنا نضع الترتيب الذي نريده بالضبط للأقسام الفرعية!
-    const groups = {
-      'Stadium': {
-        'Gates': [],
-        'eGates': [],
-        'Entrances': [],
-        'Ticket Booths': [],
-        'Levels (LVL)': [],
-        'POS (Points of Sale)': [],
-        'Stadium Info': []
-      },
-      'Gates & Parking Areas': {
-        'VIP Parking': [],
-        'Parking A': [],
-        'Parking B': [],
-        'Parking C': [],
-        'Gates': []
-      }
-    };
-
-    // 2. توزيع النقاط على الأقسام
+    const groups = { 'Stadium': {}, 'Gates & Parking Areas': {} };
     hotspots.forEach(spot => {
       const { main, sub } = getCategory(spot);
       if (!groups[main]) groups[main] = {};
       if (!groups[main][sub]) groups[main][sub] = [];
       groups[main][sub].push(spot);
     });
-
-    // 3. تنظيف الأقسام الفارغة (لكي لا يظهر قسم فارغ إذا لم تكن فيه نقاط)
-    Object.keys(groups).forEach(main => {
-      Object.keys(groups[main]).forEach(sub => {
-        if (groups[main][sub].length === 0) {
-          delete groups[main][sub];
-        }
-      });
-    });
-
     return groups;
   }, [hotspots]);
 
-  // ✨ نظام الفلترة البصرية الجديد (يقبل خيارات متعددة)
   const filteredSpots = useMemo(() => {
-    if (!isAllSpotsVisible) return []; // إذا الزر الرئيسي مطفأ، أخف كل شيء
-    if (Object.keys(activeFilters).length === 0) return hotspots; // إذا لا توجد فلاتر محددة، اعرض الكل
-
+    if (!isAllSpotsVisible) return [];
+    if (Object.keys(activeFilters).length === 0) return hotspots;
     return hotspots.filter(s => {
       const cat = getCategory(s);
-
-      // هل القسم الرئيسي لهذه النقطة ضمن الفلاتر؟
       if (!activeFilters[cat.main]) return false;
-
-      // إذا كان القسم الرئيسي بالكامل محدد ('ALL')
       if (activeFilters[cat.main] === 'ALL') return true;
-
-      // إذا كانت أقسام فرعية محددة
       return Array.isArray(activeFilters[cat.main]) && activeFilters[cat.main].includes(cat.sub);
     });
   }, [hotspots, isAllSpotsVisible, activeFilters]);
 
   useEffect(() => {
-    if (activeEditId === null) return;
+    // ✨ حماية: تفعيل اختصارات كيبورد التحريك فقط للمسجلين
+    if (activeEditId === null || !isLoggedIn) return;
     const moveStep = 2.0;
     const handleKeyDown = (e) => {
       const tag = e.target.tagName.toLowerCase();
       if (tag === 'input' || tag === 'textarea') return;
-
       const key = e.key.toLowerCase();
       if (['w', 'a', 's', 'd', 'z', 'x'].includes(key)) {
         setHotspots(prev => prev.map(spot => {
@@ -515,14 +485,14 @@ export default function App() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeEditId]);
+  }, [activeEditId, isLoggedIn]);
 
   useEffect(() => {
     localStorage.setItem("stadium_r3f_hotspots", JSON.stringify(hotspots));
   }, [hotspots]);
 
   const handleMeshClick = (point) => {
-    if (activeEditId === null || isOrbitingRef.current || isDragging) return;
+    if (activeEditId === null || isOrbitingRef.current || isDragging || !isLoggedIn) return;
     setHotspots(prev => prev.map(spot => {
       if (spot.id === activeEditId) {
         const safeY = Math.max(4.5, parseFloat(point.y.toFixed(3)));
@@ -533,7 +503,7 @@ export default function App() {
   };
 
   const handleMeshDblClick = (point) => {
-    if (activeEditId !== null) return;
+    if (activeEditId !== null || !isLoggedIn) return;
     setNewSpotPos([parseFloat(point.x.toFixed(3)), Math.max(4.5, parseFloat(point.y.toFixed(3))), parseFloat(point.z.toFixed(3))]);
     setNewSpotLabel("");
     setNewSpotType("gate");
@@ -549,6 +519,7 @@ export default function App() {
   };
 
   const handleRightClickSpot = (spot) => {
+    if (!isLoggedIn) return;
     clearHoverEffect();
     backupHotspotsRef.current = [...hotspots];
     setActiveEditId(spot.id);
@@ -647,58 +618,41 @@ export default function App() {
 
       <div className={`sidebar-controls ${isMobileMenuOpen ? 'open' : ''}`}>
 
+        {/* زر الخروج يظهر في الأعلى فقط إذا سجل دخول */}
+        {isLoggedIn && (
+          <button className="side-btn" onClick={() => { setIsLoggedIn(false); resetToAllHotspots(); }} style={{ backgroundColor: '#222', borderColor: '#444' }}>
+            🚪 Logout (Visitor Mode)
+          </button>
+        )}
+
         <div className="accordion-container">
           <div className="accordion-header">
-            {/* ✨ زر All Hotspots الذكي */}
             <button
               className={`side-btn ${isAllSpotsVisible && Object.keys(activeFilters).length === 0 ? 'active' : ''}`}
               onClick={() => {
-                if (!isAllSpotsVisible) {
-                  setIsAllSpotsVisible(true);
-                  setActiveFilters({});
-                } else if (Object.keys(activeFilters).length > 0) {
-                  setActiveFilters({});
-                } else {
-                  setIsAllSpotsVisible(false);
-                }
+                if (!isAllSpotsVisible) { setIsAllSpotsVisible(true); setActiveFilters({}); }
+                else if (Object.keys(activeFilters).length > 0) { setActiveFilters({}); }
+                else { setIsAllSpotsVisible(false); }
               }}
             >
               All Hotspots
             </button>
-            <button
-              className={`accordion-toggle ${isAllMenuExpanded ? 'active' : ''}`}
-              onClick={() => setIsAllMenuExpanded(!isAllMenuExpanded)}
-            >
+            <button className={`accordion-toggle ${isAllMenuExpanded ? 'active' : ''}`} onClick={() => setIsAllMenuExpanded(!isAllMenuExpanded)}>
               {isAllMenuExpanded ? '▲' : '▼'}
             </button>
           </div>
 
           {isAllMenuExpanded && (
             <div className="accordion-list main-cat-list">
-
-              {/* التصنيفات الأساسية */}
               {Object.keys(groupedHotspots).map(mainCat => (
                 <div key={mainCat} className="accordion-container nested">
                   <div className="accordion-header">
-                    {/* زر التصنيف الرئيسي للفلترة */}
                     <button
                       className={`side-btn sub-btn ${activeFilters[mainCat] === 'ALL' ? 'active' : ''}`}
-                      onClick={() => {
-                        setIsAllSpotsVisible(true);
-                        setActiveFilters(prev => {
-                          const newFilters = { ...prev };
-                          if (newFilters[mainCat] === 'ALL') {
-                            delete newFilters[mainCat]; // إلغاء تحديد
-                          } else {
-                            newFilters[mainCat] = 'ALL'; // تحديد الكل وتجاهل الأقسام الفرعية داخله
-                          }
-                          return newFilters;
-                        });
-                      }}
+                      onClick={() => { setIsAllSpotsVisible(true); setActiveFilters(prev => { const newFilters = { ...prev }; if (newFilters[mainCat] === 'ALL') delete newFilters[mainCat]; else newFilters[mainCat] = 'ALL'; return newFilters; }); }}
                     >
                       {mainCat}
                     </button>
-                    {/* زر السهم لفتح القائمة فقط */}
                     <button
                       className={`accordion-toggle ${expandedMainCats.includes(mainCat) ? 'active' : ''}`}
                       onClick={() => setExpandedMainCats(prev => prev.includes(mainCat) ? prev.filter(c => c !== mainCat) : [...prev, mainCat])}
@@ -707,38 +661,17 @@ export default function App() {
                     </button>
                   </div>
 
-                  {/* الأقسام الفرعية */}
                   {expandedMainCats.includes(mainCat) && (
                     <div className="accordion-list sub-cat-list">
                       {Object.keys(groupedHotspots[mainCat]).map(subCat => (
                         <div key={subCat} className="accordion-container nested-sub">
                           <div className="accordion-header">
-                            {/* زر القسم الفرعي للفلترة */}
                             <button
                               className={`side-btn sub-sub-btn ${Array.isArray(activeFilters[mainCat]) && activeFilters[mainCat].includes(subCat) ? 'active' : ''}`}
-                              onClick={() => {
-                                setIsAllSpotsVisible(true);
-                                setActiveFilters(prev => {
-                                  const newFilters = { ...prev };
-                                  if (newFilters[mainCat] === 'ALL') {
-                                    newFilters[mainCat] = [subCat];
-                                  } else if (Array.isArray(newFilters[mainCat])) {
-                                    if (newFilters[mainCat].includes(subCat)) {
-                                      newFilters[mainCat] = newFilters[mainCat].filter(s => s !== subCat);
-                                      if (newFilters[mainCat].length === 0) delete newFilters[mainCat];
-                                    } else {
-                                      newFilters[mainCat] = [...newFilters[mainCat], subCat];
-                                    }
-                                  } else {
-                                    newFilters[mainCat] = [subCat];
-                                  }
-                                  return newFilters;
-                                });
-                              }}
+                              onClick={() => { setIsAllSpotsVisible(true); setActiveFilters(prev => { const newFilters = { ...prev }; if (newFilters[mainCat] === 'ALL') newFilters[mainCat] = [subCat]; else if (Array.isArray(newFilters[mainCat])) { if (newFilters[mainCat].includes(subCat)) { newFilters[mainCat] = newFilters[mainCat].filter(s => s !== subCat); if (newFilters[mainCat].length === 0) delete newFilters[mainCat]; } else { newFilters[mainCat] = [...newFilters[mainCat], subCat]; } } else { newFilters[mainCat] = [subCat]; } return newFilters; }); }}
                             >
                               {subCat}
                             </button>
-                            {/* زر السهم للقسم الفرعي */}
                             <button
                               className={`accordion-toggle sub-toggle ${expandedSubCats.includes(subCat) ? 'active' : ''}`}
                               onClick={() => setExpandedSubCats(prev => prev.includes(subCat) ? prev.filter(c => c !== subCat) : [...prev, subCat])}
@@ -747,17 +680,15 @@ export default function App() {
                             </button>
                           </div>
 
-                          {/* النقاط النهائية */}
                           {expandedSubCats.includes(subCat) && (
                             <div className="accordion-list items-list">
                               {groupedHotspots[mainCat][subCat].map(spot => (
-                                <div
-                                  key={spot.id}
-                                  className={`list-item ${activeTooltipId === spot.id ? 'active' : ''}`}
-                                  onClick={() => handleSpotSelect(spot)}
-                                >
+                                <div key={spot.id} className={`list-item ${activeTooltipId === spot.id ? 'active' : ''}`} onClick={() => handleSpotSelect(spot)}>
                                   <span>{spot.label.split('\n')[0]}</span>
-                                  <button className="btn-edit-small" onClick={(e) => { e.stopPropagation(); handleRightClickSpot(spot); }}>✏️ Edit</button>
+                                  {/* ✨ حماية الواجهة الجانبية: زر الـ Edit الفردي يظهر فقط للمسجلين */}
+                                  {isLoggedIn && (
+                                    <button className="btn-edit-small" onClick={(e) => { e.stopPropagation(); handleRightClickSpot(spot); }}>✏️ Edit</button>
+                                  )}
                                 </div>
                               ))}
                             </div>
@@ -772,39 +703,55 @@ export default function App() {
           )}
         </div>
 
-        <div className="accordion-header" style={{ marginTop: '15px' }}>
-          <button className="side-btn btn-copy-all" onClick={handleCopyAllData}>📋 Copy All</button>
-          <button
-            className="accordion-toggle"
-            style={{
-              backgroundColor: activeTooltipId === null ? 'rgba(255,255,255,0.1)' : '#17a2b8',
-              borderColor: activeTooltipId === null ? 'transparent' : 'white',
-              cursor: activeTooltipId === null ? 'not-allowed' : 'pointer'
-            }}
-            onClick={handleCopySelectedSpot}
-            disabled={activeTooltipId === null}
-            title="Copy Selected Spot"
-          >
-            📄
+        {/* زر تسجيل الدخول أو الخروج */}
+        {isLoggedIn ? (
+          <button className="side-btn" onClick={handleLogout} style={{ backgroundColor: '#222', borderColor: '#444' }}>
+            🚪 Logout (Visitor Mode)
           </button>
-        </div>
+        ) : (
+          <button className="side-btn" onClick={() => setShowLoginModal(true)} style={{ marginTop: '15px', backgroundColor: '#007bff', borderColor: 'white' }}>
+            🔐 Admin Login
+          </button>
+        )}
 
-        <div className="accordion-header" style={{ marginTop: '5px' }}>
-          <button className="side-btn btn-reset" onClick={handleResetToDefault}>Reset Layout</button>
-          <button
-            className="accordion-toggle"
-            style={{
-              backgroundColor: history.length === 0 ? 'rgba(255,255,255,0.1)' : '#ff9800',
-              borderColor: history.length === 0 ? 'transparent' : 'white',
-              cursor: history.length === 0 ? 'not-allowed' : 'pointer'
-            }}
-            onClick={handleUndo}
-            disabled={history.length === 0}
-            title="Undo Last Action"
-          >
-            ↩️
-          </button>
-        </div>
+        {/* نافذة إدخال الإيميل والباسورد (تظهر فقط إذا ضغط الزر) */}
+        {showLoginModal && !isLoggedIn && (
+          <div className="loading-overlay" style={{ background: 'rgba(0,0,0,0.8)' }}>
+            <div className="modal-card">
+              <h3 className="modal-title text-blue">Admin Login 🔐</h3>
+
+              <label className="modal-label">Email:</label>
+              <input type="email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} className="modal-input" />
+
+              <label className="modal-label">Password:</label>
+              <input type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} className="modal-input" />
+
+              <div className="modal-actions" style={{ marginTop: '20px' }}>
+                <button className="btn-action btn-cancel" onClick={() => setShowLoginModal(false)}>Cancel</button>
+                <button className="btn-action btn-save" onClick={handleLogin}>Login</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ✨ حماية الواجهة الجانبية: أزرار إعادة الضبط والتراجع تظهر فقط للمسجلين */}
+        {isLoggedIn && (
+          <div className="accordion-header" style={{ marginTop: '5px' }}>
+            <button className="side-btn btn-reset" onClick={handleResetToDefault}>Reset Layout</button>
+            <button
+              className={`accordion-toggle`}
+              style={{
+                backgroundColor: history.length === 0 ? 'rgba(255,255,255,0.1)' : '#ff9800',
+                borderColor: history.length === 0 ? 'transparent' : 'white',
+                cursor: history.length === 0 ? 'not-allowed' : 'pointer'
+              }}
+              onClick={handleUndo}
+              disabled={history.length === 0}
+            >
+              ↩️
+            </button>
+          </div>
+        )}
 
         {copyFeedback && <span className="copy-feedback">{copyFeedback}</span>}
       </div>
@@ -839,7 +786,7 @@ export default function App() {
             <textarea rows="4" value={editSpotLabel} onChange={(e) => setEditSpotLabel(e.target.value)} className="modal-input" />
             <label className="modal-label mt-10">Change Category:</label>
             <select value={editSpotType} onChange={(e) => setEditSpotType(e.target.value)} className="modal-input">
-              <option value="gate">Stadium</option>
+              <option value="gate">Gate / Interior Asset</option>
               <option value="parking">Parking Slot</option>
             </select>
             <div className="modal-actions space-between">
@@ -860,7 +807,7 @@ export default function App() {
         onCreated={({ scene, gl }) => {
           scene.background = new THREE.Color('#18181c');
           gl.toneMapping = THREE.LinearToneMapping;
-          gl.toneMappingExposure = 8;
+          gl.toneMappingExposure = 2;
         }}
       >
         <ambientLight intensity={0.7} />
@@ -872,29 +819,24 @@ export default function App() {
           onMeshClick={handleMeshClick}
           onMeshDblClick={handleMeshDblClick}
           onClearHover={clearHoverEffect}
+          isLoggedIn={isLoggedIn} // مررنا المتغير لحماية الموديل
         />
 
-        {activeEditId !== null && (
+        {/* ✨ حماية: مجسم التحريك بالنقر والسحب يختفي تماماً ولا يتم بناؤه في الذاكرة للزائر العادي */}
+        {isLoggedIn && activeEditId !== null && (
           (() => {
             const currentSpot = hotspots.find(h => h.id === activeEditId);
             if (!currentSpot) return null;
             return (
               <DragControls
                 key={activeEditId}
-                onDragStart={() => {
-                  saveToHistory(hotspots);
-                  setIsDragging(true);
-                }}
+                onDragStart={() => { saveToHistory(hotspots); setIsDragging(true); }}
                 onDragEnd={() => {
                   if (editMeshRef.current) {
                     const finalGlobalPos = new THREE.Vector3();
                     editMeshRef.current.getWorldPosition(finalGlobalPos);
                     const safeY = Math.max(4.5, parseFloat(finalGlobalPos.y.toFixed(3)));
-                    setHotspots(prev => prev.map(spot =>
-                      spot.id === activeEditId
-                        ? { ...spot, pos: [parseFloat(finalGlobalPos.x.toFixed(3)), safeY, parseFloat(finalGlobalPos.z.toFixed(3))] }
-                        : spot
-                    ));
+                    setHotspots(prev => prev.map(spot => spot.id === activeEditId ? { ...spot, pos: [parseFloat(finalGlobalPos.x.toFixed(3)), safeY, parseFloat(finalGlobalPos.z.toFixed(3))] } : spot));
                   }
                   setTimeout(() => setIsDragging(false), 50);
                 }}
@@ -917,6 +859,7 @@ export default function App() {
           isDragging={isDragging}
           activeTooltipId={activeTooltipId}
           onSpotSelect={handleSpotSelect}
+          isLoggedIn={isLoggedIn} // مررنا المتغير لحماية الأحداث ثلاثية الأبعاد
         />
 
         <OrbitControls
@@ -931,21 +874,9 @@ export default function App() {
           minDistance={80}
           maxPolarAngle={Math.PI / 2.1}
           minPolarAngle={Math.PI / 12}
-          onStart={() => {
-            isOrbitingRef.current = true;
-            clearTimeout(orbitTimeoutRef.current);
-          }}
-          onChange={() => {
-            isOrbitingRef.current = true;
-            clearTimeout(orbitTimeoutRef.current);
-            orbitTimeoutRef.current = setTimeout(() => {
-              isOrbitingRef.current = false;
-            }, 100);
-          }}
-          onEnd={() => {
-            clearTimeout(orbitTimeoutRef.current);
-            isOrbitingRef.current = false;
-          }}
+          onStart={() => { isOrbitingRef.current = true; clearTimeout(orbitTimeoutRef.current); }}
+          onChange={() => { isOrbitingRef.current = true; clearTimeout(orbitTimeoutRef.current); orbitTimeoutRef.current = setTimeout(() => { isOrbitingRef.current = false; }, 100); }}
+          onEnd={() => { clearTimeout(orbitTimeoutRef.current); isOrbitingRef.current = false; }}
         />
       </Canvas>
     </div>
