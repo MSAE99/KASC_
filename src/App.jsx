@@ -134,7 +134,7 @@ const getCategory = (spot) => {
 };
 
 function StadiumModel({ onLoadComplete, onMeshClick, onMeshDblClick, onClearHover }) {
-  const { scene } = useGLTF("/045_King_Abdullah_Stadium-v1.glb");
+  const { scene } = useGLTF("/045_King_Abdullah_Stadium-v2.glb");
 
   useEffect(() => {
     if (scene) {
