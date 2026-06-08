@@ -168,7 +168,6 @@ function StadiumModel({ onLoadComplete, onMeshClick, onMeshDblClick, onClearHove
         }}
         onDoubleClick={(e) => {
           e.stopPropagation();
-          // ✨ حماية 3D: لا يمكن إضافة نقطة إلا إذا كان مسجلاً دخول
           if (isLoggedIn && e.nativeEvent.button === 0 && e.point) {
             onMeshDblClick(e.point);
           }
@@ -292,7 +291,6 @@ function OptimizedHotspots({ data, activeEditId, onRightClickSpot, tooltipRef, i
             onPointerDown={(e) => {
               e.stopPropagation();
 
-              // ✨ حماية: فتح نافذة التعديل بالكليك اليمين متاحة فقط إذا سجل دخول
               if (e.nativeEvent.button === 2) {
                 if (isLoggedIn) onRightClickSpot(spot);
                 return;
@@ -300,7 +298,6 @@ function OptimizedHotspots({ data, activeEditId, onRightClickSpot, tooltipRef, i
 
               onSpotSelect(spot);
 
-              // ✨ حماية اللمس المطول للجوال
               if (isLoggedIn) {
                 longPressTimer.current = setTimeout(() => {
                   onRightClickSpot(spot);
@@ -325,36 +322,33 @@ function OptimizedHotspots({ data, activeEditId, onRightClickSpot, tooltipRef, i
 }
 
 export default function App() {
-  // 🔐 إضافة متغير حالة لتسجيل الدخول الفوري (false يعني زائر عادي)
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [showLoginModal, setShowLoginModal] = useState(false);
 
-  // ✨ إضافة مراقب للهوية (يتأكد إذا كنت مسجل دخول سابقاً أم لا)
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
-        setIsLoggedIn(true); // إذا الـ Token صحيح، افتح لوحة التحكم
+        setIsLoggedIn(true);
       } else {
-        setIsLoggedIn(false); // إذا تم تسجيل الخروج، ارجع لوضع الزائر
+        setIsLoggedIn(false);
       }
     });
     return () => unsubscribe();
   }, []);
 
-  // ✨ دالة تسجيل الدخول الحقيقية
   const handleLogin = async () => {
     try {
       await signInWithEmailAndPassword(auth, loginEmail, loginPassword);
       setShowLoginModal(false);
       setCopyFeedback("Login Successful! Welcome Admin.");
+      setTimeout(() => setCopyFeedback(""), 2000);
     } catch (error) {
-      alert("Wrong Email or Password!"); // يمنع الدخول إذا كان خطأ
+      alert("Wrong Email or Password!");
     }
   };
 
-  // ✨ دالة تسجيل الخروج الحقيقية
   const handleLogout = async () => {
     await signOut(auth);
     resetToAllHotspots();
@@ -459,7 +453,6 @@ export default function App() {
   }, [hotspots, isAllSpotsVisible, activeFilters]);
 
   useEffect(() => {
-    // ✨ حماية: تفعيل اختصارات كيبورد التحريك فقط للمسجلين
     if (activeEditId === null || !isLoggedIn) return;
     const moveStep = 2.0;
     const handleKeyDown = (e) => {
@@ -472,10 +465,10 @@ export default function App() {
             let [x, y, z] = spot.pos;
             if (key === 'a') x -= moveStep;
             if (key === 'd') x += moveStep;
-            if (key === 'w') y += moveStep;
-            if (key === 's') y -= moveStep;
-            if (key === 'z') z -= moveStep;
-            if (key === 'x') z += moveStep;
+            if (key === 'z') y += moveStep;
+            if (key === 'x') y -= moveStep;
+            if (key === 's') z -= moveStep;
+            if (key === 'w') z += moveStep;
             y = Math.max(5.5, y);
             return { ...spot, pos: [parseFloat(x.toFixed(3)), parseFloat(y.toFixed(3)), parseFloat(z.toFixed(3))] };
           }
@@ -618,10 +611,14 @@ export default function App() {
 
       <div className={`sidebar-controls ${isMobileMenuOpen ? 'open' : ''}`}>
 
-        {/* زر الخروج يظهر في الأعلى فقط إذا سجل دخول */}
-        {isLoggedIn && (
-          <button className="side-btn" onClick={() => { setIsLoggedIn(false); resetToAllHotspots(); }} style={{ backgroundColor: '#222', borderColor: '#444' }}>
+        {/* ✨ زر تسجيل الدخول أو الخروج تم تثبيته أعلى القائمة دائمًا */}
+        {isLoggedIn ? (
+          <button className="side-btn" onClick={handleLogout} >
             🚪 Logout (Visitor Mode)
+          </button>
+        ) : (
+          <button className="side-btn" onClick={() => setShowLoginModal(true)} >
+            🔐 Admin Login
           </button>
         )}
 
@@ -685,7 +682,6 @@ export default function App() {
                               {groupedHotspots[mainCat][subCat].map(spot => (
                                 <div key={spot.id} className={`list-item ${activeTooltipId === spot.id ? 'active' : ''}`} onClick={() => handleSpotSelect(spot)}>
                                   <span>{spot.label.split('\n')[0]}</span>
-                                  {/* ✨ حماية الواجهة الجانبية: زر الـ Edit الفردي يظهر فقط للمسجلين */}
                                   {isLoggedIn && (
                                     <button className="btn-edit-small" onClick={(e) => { e.stopPropagation(); handleRightClickSpot(spot); }}>✏️ Edit</button>
                                   )}
@@ -703,58 +699,64 @@ export default function App() {
           )}
         </div>
 
-        {/* زر تسجيل الدخول أو الخروج */}
-        {isLoggedIn ? (
-          <button className="side-btn" onClick={handleLogout} style={{ backgroundColor: '#222', borderColor: '#444' }}>
-            🚪 Logout (Visitor Mode)
-          </button>
-        ) : (
-          <button className="side-btn" onClick={() => setShowLoginModal(true)} style={{ marginTop: '15px', backgroundColor: '#007bff', borderColor: 'white' }}>
-            🔐 Admin Login
-          </button>
-        )}
-
-        {/* نافذة إدخال الإيميل والباسورد (تظهر فقط إذا ضغط الزر) */}
-        {showLoginModal && !isLoggedIn && (
-          <div className="loading-overlay" style={{ background: 'rgba(0,0,0,0.8)' }}>
-            <div className="modal-card">
-              <h3 className="modal-title text-blue">Admin Login 🔐</h3>
-
-              <label className="modal-label">Email:</label>
-              <input type="email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} className="modal-input" />
-
-              <label className="modal-label">Password:</label>
-              <input type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} className="modal-input" />
-
-              <div className="modal-actions" style={{ marginTop: '20px' }}>
-                <button className="btn-action btn-cancel" onClick={() => setShowLoginModal(false)}>Cancel</button>
-                <button className="btn-action btn-save" onClick={handleLogin}>Login</button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ✨ حماية الواجهة الجانبية: أزرار إعادة الضبط والتراجع تظهر فقط للمسجلين */}
+        {/* ✨ أزرار النسخ والإدارة في الأسفل (تظهر للمدير فقط) */}
         {isLoggedIn && (
-          <div className="accordion-header" style={{ marginTop: '5px' }}>
-            <button className="side-btn btn-reset" onClick={handleResetToDefault}>Reset Layout</button>
-            <button
-              className={`accordion-toggle`}
-              style={{
-                backgroundColor: history.length === 0 ? 'rgba(255,255,255,0.1)' : '#ff9800',
-                borderColor: history.length === 0 ? 'transparent' : 'white',
-                cursor: history.length === 0 ? 'not-allowed' : 'pointer'
-              }}
-              onClick={handleUndo}
-              disabled={history.length === 0}
-            >
-              ↩️
-            </button>
-          </div>
-        )}
+          <>
+            <div className="accordion-header" style={{ marginTop: '15px' }}>
+              <button className="side-btn btn-copy-all" onClick={handleCopyAllData}>📋 Copy All</button>
+              <button
+                className="accordion-toggle"
+                style={{
+                  backgroundColor: activeTooltipId === null ? 'rgba(255,255,255,0.1)' : '#17a2b8',
+                  borderColor: activeTooltipId === null ? 'transparent' : 'white',
+                  cursor: activeTooltipId === null ? 'not-allowed' : 'pointer'
+                }}
+                onClick={handleCopySelectedSpot}
+                disabled={activeTooltipId === null}
+                title="Copy Selected Spot"
+              >
+                📄
+              </button>
+            </div>
 
+            <div className="accordion-header" style={{ marginTop: '5px' }}>
+              <button className="side-btn btn-reset" onClick={handleResetToDefault}>Reset Layout</button>
+              <button
+                className={`accordion-toggle`}
+                style={{
+                  backgroundColor: history.length === 0 ? 'rgba(255,255,255,0.1)' : '#ff9800',
+                  borderColor: history.length === 0 ? 'transparent' : 'white',
+                  cursor: history.length === 0 ? 'not-allowed' : 'pointer'
+                }}
+                onClick={handleUndo}
+                disabled={history.length === 0}
+                title="Undo Last Action"
+              >
+                ↩️
+              </button>
+            </div>
+          </>
+        )}
+        
         {copyFeedback && <span className="copy-feedback">{copyFeedback}</span>}
       </div>
+
+      {/* نافذة تسجيل الدخول تظهر في المنتصف للزوار العاديين */}
+      {showLoginModal && !isLoggedIn && (
+        <div className="loading-overlay" style={{ background: 'rgba(0,0,0,0.85)', zIndex: 200 }}>
+          <div className="modal-card" style={{ width: '90%', maxWidth: '320px' }}>
+            <h3 className="modal-title text-blue">Admin Login 🔐</h3>
+            <label className="modal-label">Email:</label>
+            <input type="email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} className="modal-input" />
+            <label className="modal-label">Password:</label>
+            <input type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} className="modal-input" />
+            <div className="modal-actions" style={{ marginTop: '20px' }}>
+              <button className="btn-action btn-cancel" onClick={() => setShowLoginModal(false)}>Cancel</button>
+              <button className="btn-action btn-save" onClick={handleLogin}>Login</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div ref={tooltipRef} className="hotspot-tooltip" />
 
@@ -819,10 +821,9 @@ export default function App() {
           onMeshClick={handleMeshClick}
           onMeshDblClick={handleMeshDblClick}
           onClearHover={clearHoverEffect}
-          isLoggedIn={isLoggedIn} // مررنا المتغير لحماية الموديل
+          isLoggedIn={isLoggedIn}
         />
 
-        {/* ✨ حماية: مجسم التحريك بالنقر والسحب يختفي تماماً ولا يتم بناؤه في الذاكرة للزائر العادي */}
         {isLoggedIn && activeEditId !== null && (
           (() => {
             const currentSpot = hotspots.find(h => h.id === activeEditId);
@@ -859,7 +860,7 @@ export default function App() {
           isDragging={isDragging}
           activeTooltipId={activeTooltipId}
           onSpotSelect={handleSpotSelect}
-          isLoggedIn={isLoggedIn} // مررنا المتغير لحماية الأحداث ثلاثية الأبعاد
+          isLoggedIn={isLoggedIn}
         />
 
         <OrbitControls
